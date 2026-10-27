@@ -52,6 +52,12 @@ public abstract class DeviceGui extends Screen implements DataScreen {
     private String chatKeep = "";
 
     private final List<Hit> hits = new ArrayList<>();
+
+    // 관리 비밀번호 (설정 메뉴 잠금)
+    private String adminAuth;
+    private String pendingAuth;
+    private Runnable pendingSettings;
+    String adminError = "";
     private record Hit(int x, int y, int w, int h, Runnable action) {}
 
     protected DeviceGui(BlockPos pos, CompoundTag data, int panelW, int panelH) {
@@ -81,6 +87,19 @@ public abstract class DeviceGui extends Screen implements DataScreen {
     @Override
     public void updateData(CompoundTag newData) {
         this.data = newData;
+        if (pendingSettings != null && newData.getBoolean("setOk")) {
+            adminAuth = pendingAuth;
+            Runnable r = pendingSettings;
+            pendingSettings = null;
+            adminError = "";
+            minecraft.setScreen(this);
+            r.run();
+            return;
+        }
+        if (newData.getBoolean("setFail")) {
+            adminError = "관리 비밀번호가 틀립니다";
+            adminAuth = null;
+        }
         if (showChat() != chatShown && minecraft != null) rebuildWidgets();
         onDataChanged();
     }
@@ -105,7 +124,44 @@ public abstract class DeviceGui extends Screen implements DataScreen {
     }
 
     public void act(String action, CompoundTag args) {
+        if (adminAuth != null) {
+            if (args == null) args = new CompoundTag();
+            args.putString("auth", adminAuth);
+        }
         ClientHooks.send(pos, action, args);
+    }
+
+    /**
+     * 설정 메뉴 진입. 관리 비밀번호가 없으면 바로, 있으면 비밀번호 확인 후 들어간다.
+     */
+    protected void requestSettings(Runnable open) {
+        if (!data.getBoolean("adminSet") || adminAuth != null) {
+            open.run();
+            return;
+        }
+        pendingSettings = open;
+        adminError = "";
+        minecraft.setScreen(new AdminPwScreen(this));
+    }
+
+    /** 관리 비밀번호 확인 요청 (AdminPwScreen 에서 호출) */
+    void checkAdmin(String pw) {
+        pendingAuth = pw;
+        adminError = "";
+        CompoundTag t = new CompoundTag();
+        t.putString("pw", pw);
+        ClientHooks.send(pos, "admin_check", t);
+    }
+
+    void cancelAdmin() {
+        pendingSettings = null;
+        minecraft.setScreen(this);
+    }
+
+    /** 새 관리 비밀번호를 저장했으면 이후 인증에 그것을 쓴다 */
+    void adminChanged(String newPw, boolean cleared) {
+        if (cleared) adminAuth = null;
+        else if (newPw != null && !newPw.isEmpty()) adminAuth = newPw;
     }
 
     protected void act(String action) {
@@ -326,8 +382,9 @@ public abstract class DeviceGui extends Screen implements DataScreen {
         };
     }
 
+    /** 번호 설정 화면 (관리 비밀번호 확인 포함) */
     protected void openSettings() {
-        minecraft.setScreen(new SettingsScreen(this));
+        requestSettings(() -> minecraft.setScreen(new SettingsScreen(this)));
     }
 
     // ------------------------------------------------------------------ 입력

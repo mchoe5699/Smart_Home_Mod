@@ -17,5 +17,7 @@
  "item.smart_home_mod.blank_card": "Blank Card (for registration)",
  "item.smart_home_mod.access_card": "Access Card",
  "item.smart_home_mod.home_linker": "Home Linker",
- "item.smart_home_mod.door_linker": "Door Linker"
+ "item.smart_home_mod.door_linker": "Door Linker",
+ "block.smart_home_mod.interphone_basic": "Interphone (Basic)",
+ "block.smart_home_mod.videophone_basic": "Video Phone (Basic)"
 }

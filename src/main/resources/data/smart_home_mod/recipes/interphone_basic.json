@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "redstone",
+ "pattern": [
+  "QBQ",
+  "QRQ",
+  "Q Q"
+ ],
+ "key": {
+  "Q": {
+   "item": "minecraft:quartz"
+  },
+  "B": {
+   "item": "minecraft:stone_button"
+  },
+  "R": {
+   "item": "minecraft:redstone"
+  }
+ },
+ "result": {
+  "item": "smart_home_mod:interphone_basic",
+  "count": 1
+ }
+}

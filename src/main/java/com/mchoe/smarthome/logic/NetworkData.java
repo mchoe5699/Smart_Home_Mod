@@ -35,6 +35,9 @@ public class NetworkData extends SavedData {
         public boolean linked;
         /** 도어 링커로 연동한 문 */
         public final List<BlockPos> doors = new ArrayList<>();
+        /** 경비실기: 외출 중이면 우회 경비실로 호출이 넘어간다 */
+        public boolean away;
+        public int bypass = UNSET;
 
         Device(BlockPos pos, DeviceType type) {
             this.pos = pos.immutable();
@@ -141,6 +144,14 @@ public class NetworkData extends SavedData {
         d.dong = dong;
         d.ho = ho;
         d.linked = linked;
+        setDirty();
+    }
+
+    public void setGuardState(BlockPos pos, boolean away, int bypass) {
+        Device d = devices.get(pos);
+        if (d == null || (d.away == away && d.bypass == bypass)) return;
+        d.away = away;
+        d.bypass = bypass;
         setDirty();
     }
 
@@ -439,6 +450,8 @@ public class NetworkData extends SavedData {
             d.dong = t.getInt("dong");
             d.ho = t.getInt("ho");
             d.linked = t.getBoolean("linked");
+            d.away = t.getBoolean("away");
+            d.bypass = t.contains("bypass") ? t.getInt("bypass") : UNSET;
             for (long l : t.getLongArray("doors")) d.doors.add(BlockPos.of(l));
             data.devices.put(d.pos, d);
         }
@@ -506,6 +519,8 @@ public class NetworkData extends SavedData {
             t.putInt("dong", d.dong);
             t.putInt("ho", d.ho);
             t.putBoolean("linked", d.linked);
+            t.putBoolean("away", d.away);
+            t.putInt("bypass", d.bypass);
             t.putLongArray("doors", d.doors.stream().mapToLong(BlockPos::asLong).toArray());
             dl.add(t);
         }

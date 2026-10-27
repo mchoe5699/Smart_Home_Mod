@@ -27,6 +27,7 @@ public class SettingsScreen extends Screen implements DataScreen {
     private final DeviceType type;
     private final List<Row> rows = new ArrayList<>();
     private String error = "";
+    private boolean clearAdmin;
     private int left, top, h;
 
     private record Row(String key, String label, EditBox box) {}
@@ -81,23 +82,31 @@ public class SettingsScreen extends Screen implements DataScreen {
                 spec.add(new String[]{"ho", "호 번호"});
             }
         }
-        h = 56 + spec.size() * 26 + 40;
+        spec.add(new String[]{"adminPw", "관리 비밀번호 (변경 시만)"});
+        h = 56 + spec.size() * 26 + 40 + 24;
         left = (width - W) / 2;
         top = (height - h) / 2;
 
         for (int i = 0; i < spec.size(); i++) {
             String key = spec.get(i)[0];
             EditBox box = new EditBox(font, left + W - 90, top + 34 + i * 26, 78, 18, Component.literal(spec.get(i)[1]));
-            box.setMaxLength(4);
-            box.setFilter(s -> s.matches("\\d{0,4}"));
-            String init = i < keep.size() ? keep.get(i) : (d.getInt(key) >= 0 ? String.valueOf(d.getInt(key)) : "");
+            boolean admin = key.equals("adminPw");
+            box.setMaxLength(admin ? 8 : 4);
+            box.setFilter(admin ? s -> s.matches("\\d{0,8}") : s -> s.matches("\\d{0,4}"));
+            String init = i < keep.size() ? keep.get(i) : admin ? "" : (d.getInt(key) >= 0 ? String.valueOf(d.getInt(key)) : "");
             box.setValue(init);
-            box.setHint(Component.literal("0~9999").withStyle(ChatFormatting.DARK_GRAY));
+            box.setHint(Component.literal(admin ? "4~8자리" : "0~9999").withStyle(ChatFormatting.DARK_GRAY));
             addRenderableWidget(box);
             rows.add(new Row(key, spec.get(i)[1], box));
         }
         if (!rows.isEmpty()) setInitialFocus(rows.get(0).box);
 
+        if (d.getBoolean("adminSet")) {
+            addRenderableWidget(Button.builder(Component.literal(clearAdmin ? "관리 비밀번호 해제: 예" : "관리 비밀번호 해제: 아니오"), b -> {
+                clearAdmin = !clearAdmin;
+                b.setMessage(Component.literal(clearAdmin ? "관리 비밀번호 해제: 예" : "관리 비밀번호 해제: 아니오"));
+            }).bounds(left + 12, top + h - 56, W - 24, 18).build());
+        }
         int by = top + h - 30;
         addRenderableWidget(Button.builder(Component.literal("저장").withStyle(ChatFormatting.GREEN), b -> save())
                 .bounds(left + 12, by, (W - 30) / 2, 20).build());
@@ -107,8 +116,18 @@ public class SettingsScreen extends Screen implements DataScreen {
 
     private void save() {
         CompoundTag args = new CompoundTag();
+        String newAdmin = "";
         for (Row r : rows) {
             String v = r.box.getValue().trim();
+            if (r.key.equals("adminPw")) {
+                if (!v.isEmpty() && v.length() < 4) {
+                    error = "관리 비밀번호는 4~8자리입니다";
+                    return;
+                }
+                newAdmin = v;
+                args.putString("adminPw", v);
+                continue;
+            }
             if (v.isEmpty()) {
                 error = r.label + "를 입력하세요";
                 return;
@@ -120,7 +139,9 @@ public class SettingsScreen extends Screen implements DataScreen {
             }
             args.putInt(r.key, n);
         }
+        args.putBoolean("adminClear", clearAdmin);
         parent.act("settings", args);
+        parent.adminChanged(newAdmin, clearAdmin);
         onClose();
     }
 
@@ -155,7 +176,7 @@ public class SettingsScreen extends Screen implements DataScreen {
             case GUARD -> "이 번호를 관할로 설정한 기기가 우선 연결";
             case DOOR -> "이 동·호의 세대 내부기기로 송출됩니다";
         };
-        g.drawCenteredString(font, help, left + W / 2, top + h - 50, 0x9AA7B8);
+        g.drawCenteredString(font, help, left + W / 2, top + h - 72, 0x9AA7B8);
         if (!error.isEmpty()) g.drawCenteredString(font, error, left + W / 2, top + 24, 0xFF6B6B);
         super.render(g, mouseX, mouseY, partialTick);
     }

@@ -202,7 +202,10 @@ public class WallpadGui extends DeviceGui {
             centered(g, p.title, tx + tw / 2, ty + th - 22, 0xFFFFFF);
             String sub = tileSub(p);
             if (!sub.isEmpty()) centered(g, font.plainSubstrByWidth(sub, tw - 4), tx + tw / 2, ty + th - 11, 0x9AA7B8);
-            touch(tx, ty, tw, th, () -> page = p);
+            touch(tx, ty, tw, th, () -> {
+                if (p == Page.SETTINGS) requestSettings(() -> page = Page.SETTINGS);
+                else page = p;
+            });
         }
     }
 

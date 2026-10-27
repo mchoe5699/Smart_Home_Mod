@@ -19,6 +19,7 @@ public class InterphoneGui extends DeviceGui {
 
     @Override
     protected void onKey(char c) {
+        if (!type.canDial() && c != '\n') return;
         if (c == '<') {
             if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
         } else if (c == '\n' || c == '#') {
@@ -52,16 +53,23 @@ public class InterphoneGui extends DeviceGui {
         int ink = 0xFF1C2A1C;
         if (st == DeviceLogic.STATUS_IDLE) {
             g.drawString(font, DeviceLogic.num(data.getInt("dong")) + "-" + DeviceLogic.num(data.getInt("ho")) + "  " + clock(), rx + 4, ly + 4, ink, false);
-            g.drawString(font, input.isEmpty() ? "동*호 → 통화" : input, rx + 4, ly + 22, ink, false);
+            g.drawString(font, !type.canDial() ? "경비실 호출 가능" : input.isEmpty() ? "동*호 → 통화" : input, rx + 4, ly + 22, ink, false);
         } else {
             g.drawString(font, statusText(), rx + 4, ly + 4, ink, false);
             fitText(g, data.getString("peer"), rx + 4, ly + 22, rw - 8, ink);
         }
 
-        // 키패드
-        keypad(g, rx + 4, y + 86, 36, 22, 5, 0xFFD8D2C0, 0xFF30343A, mx, my);
-        // 기능 버튼
-        int fy = y + 86 + 4 * 27 + 6, fw = (rw - 6) / 2;
+        // 키패드 (단순형은 다이얼 없음)
+        int fy;
+        if (type.canDial()) {
+            keypad(g, rx + 4, y + 86, 36, 22, 5, 0xFFD8D2C0, 0xFF30343A, mx, my);
+            fy = y + 86 + 4 * 27 + 6;
+        } else {
+            fy = y + 96;
+            centered(g, "다이얼 없음", rx + rw / 2, y + 80, 0xFF9C9686);
+            centered(g, "세대 통화는 경비실 교환", rx + rw / 2, y + h - 40, 0xFF9C9686);
+        }
+        int fw = (rw - 6) / 2;
         buttonIcon(g, rx, fy, fw, 24, I_GUARD, "경비실", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> act("call_guard"));
         buttonIcon(g, rx + fw + 6, fy, fw, 24, I_CALL, "통화", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, this::talk);
         buttonIcon(g, rx, fy + 30, fw, 24, I_DOOR, "문열림", data.getBoolean("entrance") ? 0xFF2E6DB4 : 0xFFB8B2A0, 0xFFFFFFFF, mx, my, () -> act("open_door"));

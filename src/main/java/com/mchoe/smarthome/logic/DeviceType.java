@@ -12,6 +12,8 @@ public enum DeviceType {
     WALLPAD      ("wallpad",       "월패드",      true,  false, true,  SettingsKind.UNIT,  true,  new float[]{1.5f, 4f, 14.5f, 11.7f, 15.25f},  0.085f, 0f),
     VIDEOPHONE   ("videophone",    "비디오폰",    true,  false, true,  SettingsKind.UNIT,  true,  new float[]{5f, 5f, 13f, 10.5f, 14.75f},      0.075f, 0f),
     INTERPHONE   ("interphone",    "인터폰",      true,  false, false, SettingsKind.UNIT,  true,  new float[]{5.6f, 10f, 8.6f, 12.4f, 15f},     0.045f, 0f),
+    VIDEOPHONE_BASIC("videophone_basic", "비디오폰(기본형)", true, false, true, SettingsKind.UNIT, true, new float[]{5f, 5f, 13f, 10.5f, 14.75f}, 0.075f, 0f),
+    INTERPHONE_BASIC("interphone_basic", "인터폰(단순형)", true, false, false, SettingsKind.UNIT, true, new float[]{5.6f, 10f, 8.6f, 12.4f, 15f}, 0.045f, 0f),
     DOOR_CAMERA  ("door_camera",   "도어카메라",  false, true,  false, SettingsKind.DOOR,  true,  new float[]{6.6f, 4.2f, 9.4f, 5.4f, 14.75f},  0.03f,  10.5f),
     DOOR_PHONE   ("door_phone",    "도어폰",      false, false, false, SettingsKind.DOOR,  true,  new float[]{6.2f, 5.6f, 9.8f, 6.8f, 14.75f},  0.03f,  0f),
     LOBBY_PHONE  ("lobby_phone",   "로비폰",      false, true,  false, SettingsKind.LOBBY, true,  new float[]{3.5f, 8.6f, 12.5f, 13.2f, 15f},   0.075f, 14.2f),
@@ -48,6 +50,21 @@ public enum DeviceType {
         this.screen = screen;
         this.textScale = textScale;
         this.cameraY = cameraY;
+    }
+
+    /** 세대를 직접 호출(다이얼)할 수 있는가. 기본형/단순형은 경비실 교환으로만 연결 */
+    public boolean canDial() {
+        return this != VIDEOPHONE_BASIC && this != INTERPHONE_BASIC;
+    }
+
+    /** 비디오폰 계열 */
+    public boolean isVideophone() {
+        return this == VIDEOPHONE || this == VIDEOPHONE_BASIC;
+    }
+
+    /** 인터폰 계열 */
+    public boolean isInterphone() {
+        return this == INTERPHONE || this == INTERPHONE_BASIC;
     }
 
     public boolean isEntrance() {

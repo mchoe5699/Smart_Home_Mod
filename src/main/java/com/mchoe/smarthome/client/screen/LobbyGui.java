@@ -233,8 +233,12 @@ public class LobbyGui extends DeviceGui {
         button(g, x + w - 24, y + 1, 22, 10, "⚙", admin != Admin.NONE ? 0xFFC98A2E : 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> {
             input = "";
             pwMode = false;
-            admin = admin == Admin.NONE ? Admin.GEAR : Admin.NONE;
-            if (admin == Admin.NONE) auth = "";
+            if (admin == Admin.NONE) {
+                requestSettings(() -> admin = Admin.GEAR);
+            } else {
+                admin = Admin.NONE;
+                auth = "";
+            }
         });
     }
 

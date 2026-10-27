@@ -1,0 +1,139 @@
+{
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/interphone_body",
+  "front": "smart_home_mod:block/interphone_basic_front",
+  "handset": "smart_home_mod:block/interphone_handset",
+  "particle": "smart_home_mod:block/interphone_body"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    2.5,
+    15
+   ],
+   "to": [
+    11,
+    13.5,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#front"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#body"
+    }
+   }
+  },
+  {
+   "from": [
+    9,
+    3.6,
+    14.2
+   ],
+   "to": [
+    11,
+    12.4,
+    15
+   ],
+   "faces": {
+    "north": {
+     "texture": "#handset"
+    },
+    "south": {
+     "texture": "#handset"
+    },
+    "east": {
+     "texture": "#handset"
+    },
+    "west": {
+     "texture": "#handset"
+    },
+    "up": {
+     "texture": "#handset"
+    },
+    "down": {
+     "texture": "#handset"
+    }
+   }
+  },
+  {
+   "from": [
+    8.8,
+    10.6,
+    13.6
+   ],
+   "to": [
+    11.2,
+    12.8,
+    14.2
+   ],
+   "faces": {
+    "north": {
+     "texture": "#handset"
+    },
+    "south": {
+     "texture": "#handset"
+    },
+    "east": {
+     "texture": "#handset"
+    },
+    "west": {
+     "texture": "#handset"
+    },
+    "up": {
+     "texture": "#handset"
+    },
+    "down": {
+     "texture": "#handset"
+    }
+   }
+  },
+  {
+   "from": [
+    8.8,
+    3.2,
+    13.6
+   ],
+   "to": [
+    11.2,
+    5.4,
+    14.2
+   ],
+   "faces": {
+    "north": {
+     "texture": "#handset"
+    },
+    "south": {
+     "texture": "#handset"
+    },
+    "east": {
+     "texture": "#handset"
+    },
+    "west": {
+     "texture": "#handset"
+    },
+    "up": {
+     "texture": "#handset"
+    },
+    "down": {
+     "texture": "#handset"
+    }
+   }
+  }
+ ]
+}

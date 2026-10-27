@@ -86,7 +86,10 @@ public class VideophoneGui extends DeviceGui {
         drawScreen(g, sx, sy, sw, sh, mx, my);
 
         // 스피커 · 상표
-        g.drawString(font, "VIDEO PHONE", x + w - 76, y + h - 18, 0xFFB0B4B6, false);
+        g.drawString(font, type.canDial() ? "VIDEO PHONE" : "VIDEO PHONE B", x + w - 76, y + h - 18, 0xFFB0B4B6, false);
+        if (!type.canDial() && idle() && !setup && !monitor) {
+            g.drawString(font, "세대 통화: 경비실 교환", x + 16, y + h - 30, 0xFF707880, false);
+        }
 
         // 오른쪽 버튼
         int bx = x + w - 80, bw = 66, by = y + 14, bh = 24, gap = 6;
@@ -106,14 +109,16 @@ public class VideophoneGui extends DeviceGui {
         by += bh + gap;
         buttonIcon(g, bx, by, bw, bh, I_GUARD, "경비실", 0xFFCFCFCB, 0xFF30343A, mx, my, () -> act("call_guard"));
         by += bh + gap;
-        buttonIcon(g, bx, by, bw, bh, I_PHONE, "인터폰", intercom ? 0xFF2E9E4F : 0xFFCFCFCB, intercom ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
-            if (idle()) {
-                intercom = !intercom;
-                monitor = false;
-                input = "";
-            }
-        });
-        by += bh + gap;
+        if (type.canDial()) {
+            buttonIcon(g, bx, by, bw, bh, I_PHONE, "인터폰", intercom ? 0xFF2E9E4F : 0xFFCFCFCB, intercom ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
+                if (idle()) {
+                    intercom = !intercom;
+                    monitor = false;
+                    input = "";
+                }
+            });
+            by += bh + gap;
+        }
         buttonIcon(g, bx, by, bw, bh, I_HANGUP, "종료", 0xFFCFCFCB, 0xFFB43A3A, mx, my, () -> {
             if (!idle()) act("hangup");
             monitor = false;
@@ -123,11 +128,12 @@ public class VideophoneGui extends DeviceGui {
         });
         button(g, x + w - 18, y + h - 16, 14, 12, "⚙", setup ? 0xFF2E7DD7 : 0xFFCFCFCB, setup ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
             if (!idle()) return;
-            setup = !setup;
             pwEntry = false;
             monitor = false;
             intercom = false;
             input = "";
+            if (setup) setup = false;
+            else requestSettings(() -> setup = true);
         });
     }
 

@@ -149,6 +149,12 @@ public final class DeviceLogic {
         tag.putInt("ho", d.getHo());
         tag.putBoolean("doorOpen", d.isDoorOpen());
         tag.putBoolean("linked", d.isLinked());
+        tag.putBoolean("adminSet", d.hasAdminPw());
+        if (type == DeviceType.GUARD_STATION) {
+            tag.putBoolean("away", d.isAway());
+            tag.putInt("bypass", d.getBypass());
+            CallManager.writeExchange(level, pos, tag);
+        }
         NetworkData.Device reg = NetworkData.get(level).getDevice(pos);
         tag.putInt("doorCount", reg == null ? 0 : reg.doors.size());
         NetworkData data = NetworkData.get(level);
@@ -232,8 +238,29 @@ public final class DeviceLogic {
         }
         if (!(be instanceof DeviceBlockEntity dev)) return;
 
+        // 관리 비밀번호로 잠긴 설정 동작
+        if ((action.equals("settings") || action.equals("set_pw")) && !dev.checkAdmin(args.getString("auth"))) {
+            extra.putBoolean("setFail", true);
+            msg(player, "관리 비밀번호가 필요합니다", ChatFormatting.RED);
+            openScreen(player, pos, true);
+            return;
+        }
         String error = switch (action) {
             case "refresh" -> null;
+            case "admin_check" -> {
+                if (dev.checkAdmin(args.getString("pw"))) {
+                    extra.putBoolean("setOk", true);
+                    yield null;
+                }
+                extra.putBoolean("setFail", true);
+                yield "관리 비밀번호가 틀립니다";
+            }
+            case "guard_away" -> guardAway(dev, args);
+            case "exchange" -> exchange(level, player, dev, args.getInt("dong"), args.getInt("ho"));
+            case "exchange_cancel" -> {
+                CallManager.cancelExchange(level, pos, "교환을 취소했습니다");
+                yield null;
+            }
             case "settings" -> saveSettings(dev, args);
             case "call_guard" -> callGuard(level, player, dev);
             case "call_unit" -> callUnit(level, player, dev, args.getInt("dong"), args.getInt("ho"));
@@ -268,8 +295,45 @@ public final class DeviceLogic {
                 return "도어카메라·도어폰은 홈 링커로 세대기와 연동하세요";
             }
         }
+        String newPw = args.getString("adminPw").trim();
+        if (!newPw.isEmpty() && !newPw.matches("\\d{4,8}")) return "관리 비밀번호는 숫자 4~8자리입니다";
         dev.setNumbers(guard, dong, ho);
+        if (args.getBoolean("adminClear")) dev.setAdminPw("");
+        else if (!newPw.isEmpty()) dev.setAdminPw(newPw);
         return null;
+    }
+
+    /** 경비실기 외출/재실. 외출하려면 우회 경비실 번호가 있어야 한다 */
+    private static String guardAway(DeviceBlockEntity dev, CompoundTag args) {
+        if (dev.getDeviceType() != DeviceType.GUARD_STATION) return null;
+        boolean away = args.getBoolean("away");
+        if (!away) {
+            dev.setAway(false, dev.getBypass());
+            return null;
+        }
+        if (!args.contains("bypass")) return "우회 경비실 번호를 입력하세요";
+        int bypass = args.getInt("bypass");
+        if (bypass < 0 || bypass > MAX_NUMBER) return "우회 경비실 번호는 0~9999 입니다";
+        if (bypass == dev.getGuard()) return "자기 경비실 번호로는 우회할 수 없습니다";
+        dev.setAway(true, bypass);
+        return null;
+    }
+
+    /** 경비실 교환: 통화 중인 세대를 다른 세대로 연결 */
+    private static String exchange(ServerLevel level, ServerPlayer player, DeviceBlockEntity dev, int dong, int ho) {
+        if (dev.getDeviceType() != DeviceType.GUARD_STATION) return "경비실기에서만 교환할 수 있습니다";
+        if (dong < 0 || dong > MAX_NUMBER || ho < 0 || ho > MAX_NUMBER) return "교환할 동·호를 입력하세요";
+        NetworkData data = NetworkData.get(level);
+        int cid = data.complexAt(dev.getBlockPos());
+        if (cid < 0) return OUTSIDE;
+        List<NetworkData.Device> targets = new ArrayList<>();
+        for (NetworkData.Device d : data.devicesIn(cid)) {
+            if (d.type.internal && d.dong == dong && d.ho == ho) targets.add(d);
+        }
+        if (targets.isEmpty()) return "단지 안에 " + dong + "동 " + ho + "호 세대기가 없습니다";
+        String err = CallManager.exchange(level, dev.getBlockPos(), myDevice(data, dev), targets);
+        if (err == null) msg(player, dong + "동 " + ho + "호로 교환 호출 중...", ChatFormatting.AQUA);
+        return err;
     }
 
     /** 경비실 호출: 관할 경비실 우선, 없거나 통화 중이면 단지 내 다른 경비실 */
@@ -280,18 +344,27 @@ public final class DeviceLogic {
         int cid = data.complexAt(dev.getBlockPos());
         if (cid < 0) return OUTSIDE;
         NetworkData.Device me = myDevice(data, dev);
+        List<NetworkData.Device> guards = new ArrayList<>();
+        for (NetworkData.Device d : data.devicesIn(cid)) if (d.type == DeviceType.GUARD_STATION) guards.add(d);
+        // 관할 경비실 (외출 중이면 우회 경비실로)
         List<NetworkData.Device> mine = new ArrayList<>();
-        List<NetworkData.Device> others = new ArrayList<>();
-        for (NetworkData.Device d : data.devicesIn(cid)) {
-            if (d.type != DeviceType.GUARD_STATION) continue;
-            if (dev.getGuard() >= 0 && d.guard == dev.getGuard()) mine.add(d);
-            else others.add(d);
+        String route = null;
+        for (NetworkData.Device g : guards) {
+            if (dev.getGuard() < 0 || g.guard != dev.getGuard()) continue;
+            if (!g.away) {
+                if (!mine.contains(g)) mine.add(g);
+            } else if (g.bypass >= 0) {
+                route = "관할 경비실 외출 중 → 우회 경비실 " + g.bypass;
+                for (NetworkData.Device b : guards) if (b.guard == g.bypass && !b.away && !mine.contains(b)) mine.add(b);
+            }
         }
-        if (mine.isEmpty() && others.isEmpty()) return "단지에 경비실기가 없습니다";
+        List<NetworkData.Device> others = new ArrayList<>();
+        for (NetworkData.Device g : guards) if (!g.away && !mine.contains(g)) others.add(g);
+        if (mine.isEmpty() && others.isEmpty()) return guards.isEmpty() ? "단지에 경비실기가 없습니다" : "모든 경비실이 외출 중입니다";
         if (!mine.isEmpty()) {
             String err = CallManager.start(level, dev.getBlockPos(), me, mine, player);
             if (err == null) {
-                msg(player, "관할 경비실 " + dev.getGuard() + " 호출 중...", ChatFormatting.AQUA);
+                msg(player, route != null ? route + " 호출 중..." : "관할 경비실 " + dev.getGuard() + " 호출 중...", ChatFormatting.AQUA);
                 return null;
             }
             if (others.isEmpty()) return "관할 경비실이 통화 중입니다";
@@ -313,6 +386,9 @@ public final class DeviceLogic {
 
         boolean requireSameGuard;
         switch (type) {
+            case VIDEOPHONE_BASIC, INTERPHONE_BASIC -> {
+                return "이 기기는 세대 직접 호출 기능이 없습니다. 경비실을 호출해 교환을 요청하세요";
+            }
             case WALLPAD, VIDEOPHONE, INTERPHONE -> {
                 if (dev.getGuard() < 0) return "먼저 관할경비실·세대번호를 설정하세요";
                 requireSameGuard = true;

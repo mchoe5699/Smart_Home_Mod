@@ -60,8 +60,8 @@ public class DeviceBlock extends BaseEntityBlock {
     private static VoxelShape baseShape(DeviceType type) {
         return switch (type) {
             case WALLPAD -> box(0.5, 3, 15.25, 15.5, 12.5, 16);
-            case VIDEOPHONE -> box(2, 4, 14.75, 14, 11.5, 16);
-            case INTERPHONE -> box(5, 2.5, 13.6, 11, 13.5, 16);
+            case VIDEOPHONE, VIDEOPHONE_BASIC -> box(2, 4, 14.75, 14, 11.5, 16);
+            case INTERPHONE, INTERPHONE_BASIC -> box(5, 2.5, 13.6, 11, 13.5, 16);
             case DOOR_CAMERA -> box(6, 3.5, 14, 10, 12.5, 16);
             case DOOR_PHONE -> box(5.5, 5, 14.75, 10.5, 11, 16);
             case LOBBY_PHONE -> box(2.5, 0.5, 13.5, 13.5, 16, 16);

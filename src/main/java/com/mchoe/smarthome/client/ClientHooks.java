@@ -42,8 +42,8 @@ public final class ClientHooks {
             case "control" -> new ControlScreen(pos, data);
             default -> switch (DeviceType.byId(data.getString("type"))) {
                 case WALLPAD -> new WallpadGui(pos, data);
-                case VIDEOPHONE -> new VideophoneGui(pos, data);
-                case INTERPHONE -> new InterphoneGui(pos, data);
+                case VIDEOPHONE, VIDEOPHONE_BASIC -> new VideophoneGui(pos, data);
+                case INTERPHONE, INTERPHONE_BASIC -> new InterphoneGui(pos, data);
                 case LOBBY_PHONE -> new LobbyGui(pos, data);
                 case GUARD_STATION -> new GuardGui(pos, data);
                 case DOOR_CAMERA, DOOR_PHONE -> new DoorGui(pos, data);

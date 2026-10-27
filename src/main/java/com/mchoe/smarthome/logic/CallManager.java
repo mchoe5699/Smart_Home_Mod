@@ -3,6 +3,7 @@ package com.mchoe.smarthome.logic;
 import com.mchoe.smarthome.blockentity.DeviceBlockEntity;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -27,6 +28,8 @@ public final class CallManager {
     public static final double VOICE_RANGE = 6.0;
 
     private static final Map<Integer, Call> CALLS = new LinkedHashMap<>();
+    /** 경비실 교환: 경비실 위치 → {보류 중인 통화, 교환 호출} */
+    private static final Map<String, int[]> EXCHANGES = new java.util.HashMap<>();
     private static int nextId = 1;
     private static long now = 0;
 
@@ -38,10 +41,22 @@ public final class CallManager {
 
     public static void clear() {
         CALLS.clear();
+        EXCHANGES.clear();
+    }
+
+    private static String key(ResourceKey<Level> dim, BlockPos pos) {
+        return dim.location() + "|" + pos.asLong();
     }
 
     /** 이 기기가 걸었거나 받은 호출을 우선, 없으면 울리고 있는 호출 */
     public static Call find(ResourceKey<Level> dim, BlockPos pos) {
+        int[] ex = EXCHANGES.get(key(dim, pos));
+        if (ex != null) {
+            Call consult = CALLS.get(ex[1]);
+            if (consult != null && consult.answered != null) return consult;
+            Call held = CALLS.get(ex[0]);
+            if (held != null) return held;
+        }
         Call ringing = null;
         for (Call c : CALLS.values()) {
             if (!c.dim.equals(dim)) continue;
@@ -124,6 +139,20 @@ public final class CallManager {
     }
 
     public static void hangup(ServerLevel level, BlockPos pos) {
+        int[] ex = EXCHANGES.get(key(level.dimension(), pos));
+        if (ex != null) {
+            Call consult = CALLS.get(ex[1]);
+            Call held = CALLS.get(ex[0]);
+            if (consult != null && consult.answered != null && held != null) {
+                transfer(level, pos, held, consult);
+                return;
+            }
+            if (consult != null) {
+                cancelExchange(level, pos, "교환을 취소했습니다");
+                return;
+            }
+            EXCHANGES.remove(key(level.dimension(), pos));
+        }
         Call c = find(level.dimension(), pos);
         if (c == null) return;
         if (c.caller.equals(pos) || pos.equals(c.answered)) end(level, c, "통화가 종료되었습니다");
@@ -142,6 +171,18 @@ public final class CallManager {
 
     public static void end(ServerLevel level, Call c, String reason) {
         CALLS.remove(c.id);
+        // 교환과 얽힌 통화 정리
+        for (Map.Entry<String, int[]> e : new ArrayList<>(EXCHANGES.entrySet())) {
+            int[] ex = e.getValue();
+            if (ex[0] == c.id) {
+                EXCHANGES.remove(e.getKey());
+                Call consult = CALLS.get(ex[1]);
+                if (consult != null) end(level, consult, "교환 대기 중이던 통화가 끝났습니다");
+            } else if (ex[1] == c.id) {
+                ex[1] = 0;
+                if (c.answered == null) notifyNear(level, c.caller, Component.literal("교환 대상이 응답하지 않습니다. 다시 교환할 수 있습니다").withStyle(ChatFormatting.YELLOW));
+            }
+        }
         if (c.answered == null) {
             for (BlockPos t : c.targets) log(level, t, "부재중 - " + c.callerLabel);
         }
@@ -194,6 +235,104 @@ public final class CallManager {
                 end(level, c, "통화 시간(5분)이 끝났습니다");
             }
         }
+    }
+
+    // ------------------------------------------------------------------ 경비실 교환
+
+    /** 경비실이 통화 중인 상대를 보류하고 다른 세대를 호출한다 */
+    public static String exchange(ServerLevel level, BlockPos guard, NetworkData.Device guardDev, List<NetworkData.Device> targets) {
+        ResourceKey<Level> dim = level.dimension();
+        String k = key(dim, guard);
+        int[] ex = EXCHANGES.get(k);
+        Call held = null;
+        if (ex != null) {
+            held = CALLS.get(ex[0]);
+            Call consult = CALLS.get(ex[1]);
+            if (consult != null && consult.answered != null) return "교환 세대와 통화 중입니다. [종료]를 누르면 두 세대가 연결됩니다";
+            if (consult != null) cancelExchange(level, guard, null);
+        }
+        if (held == null) {
+            for (Call c : CALLS.values()) {
+                if (c.dim.equals(dim) && c.answered != null && (c.caller.equals(guard) || guard.equals(c.answered))) {
+                    held = c;
+                    break;
+                }
+            }
+        }
+        if (held == null) return "교환하려면 먼저 세대와 통화 중이어야 합니다";
+        BlockPos other = held.caller.equals(guard) ? held.answered : held.caller;
+        List<NetworkData.Device> free = new ArrayList<>();
+        for (NetworkData.Device d : targets) {
+            if (d.pos.equals(other) || d.pos.equals(guard)) continue;
+            if (!isBusy(dim, d.pos)) free.add(d);
+        }
+        if (free.isEmpty()) return "교환할 세대가 통화 중입니다";
+        Call c = new Call(nextId++, dim, guard, DeviceType.GUARD_STATION, DeviceLogic.label(guardDev) + " (교환)");
+        c.createdTick = now;
+        for (NetworkData.Device d : free) {
+            c.targets.add(d.pos);
+            c.targetLabels.add(DeviceLogic.label(d));
+        }
+        CALLS.put(c.id, c);
+        EXCHANGES.put(k, new int[]{held.id, c.id});
+        held.addMessage("§7[경비실] 잠시만 기다려 주세요. 교환 중입니다");
+        return null;
+    }
+
+    /** 응답 전 교환 호출 취소 (보류 통화는 유지) */
+    public static void cancelExchange(ServerLevel level, BlockPos guard, String reason) {
+        int[] ex = EXCHANGES.get(key(level.dimension(), guard));
+        if (ex == null) return;
+        Call consult = CALLS.remove(ex[1]);
+        ex[1] = 0;
+        if (consult != null) {
+            for (BlockPos t : consult.targets) log(level, t, "교환 취소 - " + consult.callerLabel);
+            if (consult.answered != null) notifyNear(level, consult.answered, Component.literal("경비실이 교환을 취소했습니다").withStyle(ChatFormatting.YELLOW));
+        }
+        if (reason != null) notifyNear(level, guard, Component.literal(reason).withStyle(ChatFormatting.YELLOW));
+    }
+
+    /** 경비실이 종료를 누르면 보류 중이던 상대와 교환 세대를 직접 연결 */
+    private static void transfer(ServerLevel level, BlockPos guard, Call held, Call consult) {
+        EXCHANGES.remove(key(level.dimension(), guard));
+        CALLS.remove(held.id);
+        CALLS.remove(consult.id);
+        BlockPos a = held.caller.equals(guard) ? held.answered : held.caller;
+        String aLabel = held.caller.equals(guard) ? held.answeredLabel : held.callerLabel;
+        NetworkData.Device ad = NetworkData.get(level).getDevice(a);
+        DeviceType aType = ad != null ? ad.type : held.callerType;
+        Call c = new Call(nextId++, level.dimension(), a, aType, aLabel);
+        c.createdTick = now;
+        c.answered = consult.answered;
+        c.answeredLabel = consult.answeredLabel;
+        c.answeredTick = now;
+        c.addMessage("§a[교환] 경비실에서 " + aLabel + " ↔ " + c.answeredLabel + " 연결");
+        CALLS.put(c.id, c);
+        log(level, c.answered, "교환 통화 - " + aLabel);
+        log(level, a, "교환 통화 - " + c.answeredLabel);
+        Component msg = Component.literal("경비실 교환으로 연결되었습니다").withStyle(ChatFormatting.GREEN);
+        notifyNear(level, a, msg);
+        notifyNear(level, c.answered, msg);
+        notifyNear(level, guard, Component.literal("교환 완료 - 두 세대가 연결되었습니다").withStyle(ChatFormatting.GREEN));
+    }
+
+    /** 경비실기 화면용 교환 상태: exch 0 없음 · 1 교환 호출 중 · 2 교환 세대와 통화 중 */
+    public static void writeExchange(ServerLevel level, BlockPos guard, CompoundTag tag) {
+        int[] ex = EXCHANGES.get(key(level.dimension(), guard));
+        int state = 0;
+        String peer = "", held = "";
+        if (ex != null) {
+            Call h = CALLS.get(ex[0]);
+            Call c = CALLS.get(ex[1]);
+            if (h != null) held = h.caller.equals(guard) ? h.answeredLabel : h.callerLabel;
+            if (c != null) {
+                state = c.answered != null ? 2 : 1;
+                peer = c.answered != null ? c.answeredLabel : String.join(", ", c.targetLabels);
+            }
+        }
+        tag.putInt("exch", state);
+        tag.putString("exchPeer", peer);
+        tag.putString("exchHeld", held);
     }
 
     /** 조작화면 대화 입력 */

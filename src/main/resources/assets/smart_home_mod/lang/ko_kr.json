@@ -17,5 +17,7 @@
  "item.smart_home_mod.blank_card": "카드등록용 카드",
  "item.smart_home_mod.access_card": "출입용 카드",
  "item.smart_home_mod.home_linker": "홈 링커",
- "item.smart_home_mod.door_linker": "도어 링커"
+ "item.smart_home_mod.door_linker": "도어 링커",
+ "block.smart_home_mod.interphone_basic": "인터폰(단순형)",
+ "block.smart_home_mod.videophone_basic": "비디오폰(기본형)"
 }

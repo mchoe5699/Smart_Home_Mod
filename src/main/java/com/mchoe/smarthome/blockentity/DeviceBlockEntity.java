@@ -29,6 +29,11 @@ public class DeviceBlockEntity extends BlockEntity {
     private int ho = NetworkData.UNSET;
     /** 도어카메라·도어폰: 홈 링커로 연동됨 */
     private boolean linked;
+    /** 관리 비밀번호 (설정되면 설정 메뉴 진입에 필요) */
+    private String adminPw = "";
+    /** 경비실기 외출 / 우회 경비실 번호 */
+    private boolean away;
+    private int bypass = NetworkData.UNSET;
     private final List<String> log = new ArrayList<>();
     private int doorTicks;
 
@@ -53,6 +58,26 @@ public class DeviceBlockEntity extends BlockEntity {
     public int getDong() { return dong; }
     public int getHo() { return ho; }
     public boolean isLinked() { return linked; }
+    public boolean isAway() { return away; }
+    public int getBypass() { return bypass; }
+    public boolean hasAdminPw() { return !adminPw.isEmpty(); }
+
+    public boolean checkAdmin(String pw) {
+        return adminPw.isEmpty() || adminPw.equals(pw);
+    }
+
+    public void setAdminPw(String pw) {
+        adminPw = pw == null ? "" : pw;
+        setChanged();
+    }
+
+    public void setAway(boolean away, int bypass) {
+        this.away = away;
+        this.bypass = bypass;
+        syncRegistry();
+        setChanged();
+        if (level != null && !level.isClientSide) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+    }
 
     /** 홈 링커: 세대기의 동·호로 연동(또는 해제) */
     public void setLink(int dong, int ho, boolean linked) {
@@ -95,7 +120,11 @@ public class DeviceBlockEntity extends BlockEntity {
     }
 
     public void syncRegistry() {
-        if (level instanceof ServerLevel sl) NetworkData.get(sl).putDevice(worldPosition, getDeviceType(), guard, dong, ho, linked);
+        if (level instanceof ServerLevel sl) {
+            NetworkData data = NetworkData.get(sl);
+            data.putDevice(worldPosition, getDeviceType(), guard, dong, ho, linked);
+            data.setGuardState(worldPosition, away, bypass);
+        }
     }
 
     @Override
@@ -143,6 +172,9 @@ public class DeviceBlockEntity extends BlockEntity {
         tag.putInt("dong", dong);
         tag.putInt("ho", ho);
         tag.putBoolean("linked", linked);
+        tag.putString("adminPw", adminPw);
+        tag.putBoolean("away", away);
+        tag.putInt("bypass", bypass);
         tag.putInt("doorTicks", doorTicks);
         ListTag l = new ListTag();
         for (String s : log) l.add(StringTag.valueOf(s));
@@ -157,6 +189,9 @@ public class DeviceBlockEntity extends BlockEntity {
         ho = tag.contains("ho") ? tag.getInt("ho") : NetworkData.UNSET;
         doorTicks = tag.getInt("doorTicks");
         linked = tag.getBoolean("linked");
+        if (tag.contains("adminPw")) adminPw = tag.getString("adminPw");
+        away = tag.getBoolean("away");
+        bypass = tag.contains("bypass") ? tag.getInt("bypass") : NetworkData.UNSET;
         if (tag.contains("log")) {
             log.clear();
             ListTag l = tag.getList("log", Tag.TAG_STRING);
@@ -177,6 +212,8 @@ public class DeviceBlockEntity extends BlockEntity {
         tag.putInt("guard", guard);
         tag.putInt("dong", dong);
         tag.putInt("ho", ho);
+        tag.putBoolean("away", away);
+        tag.putInt("bypass", bypass);
         tag.putInt("status", status);
         tag.putString("peer", peer);
         if (camPos != Long.MIN_VALUE) tag.putLong("camPos", camPos);
