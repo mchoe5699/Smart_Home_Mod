@@ -82,6 +82,7 @@ public class SettingsScreen extends Screen implements DataScreen {
                 spec.add(new String[]{"ho", "호 번호"});
             }
         }
+        if (type == DeviceType.INTERPHONE) spec.add(new String[]{"householdPw", "세대 비밀번호 (변경 시만)"});
         spec.add(new String[]{"adminPw", "관리 비밀번호 (변경 시만)"});
         h = 56 + spec.size() * 26 + 40 + 24;
         left = (width - W) / 2;
@@ -90,7 +91,7 @@ public class SettingsScreen extends Screen implements DataScreen {
         for (int i = 0; i < spec.size(); i++) {
             String key = spec.get(i)[0];
             EditBox box = new EditBox(font, left + W - 90, top + 34 + i * 26, 78, 18, Component.literal(spec.get(i)[1]));
-            boolean admin = key.equals("adminPw");
+            boolean admin = key.equals("adminPw") || key.equals("householdPw");
             box.setMaxLength(admin ? 8 : 4);
             box.setFilter(admin ? s -> s.matches("\\d{0,8}") : s -> s.matches("\\d{0,4}"));
             String init = i < keep.size() ? keep.get(i) : admin ? "" : (d.getInt(key) >= 0 ? String.valueOf(d.getInt(key)) : "");
@@ -119,13 +120,13 @@ public class SettingsScreen extends Screen implements DataScreen {
         String newAdmin = "";
         for (Row r : rows) {
             String v = r.box.getValue().trim();
-            if (r.key.equals("adminPw")) {
+            if (r.key.equals("adminPw") || r.key.equals("householdPw")) {
                 if (!v.isEmpty() && v.length() < 4) {
-                    error = "관리 비밀번호는 4~8자리입니다";
+                    error = (r.key.equals("adminPw") ? "관리" : "세대") + " 비밀번호는 4~8자리입니다";
                     return;
                 }
-                newAdmin = v;
-                args.putString("adminPw", v);
+                if (r.key.equals("adminPw")) newAdmin = v;
+                args.putString(r.key, v);
                 continue;
             }
             if (v.isEmpty()) {

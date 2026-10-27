@@ -212,6 +212,14 @@ public final class AdminLogic {
                 }
                 DeviceLogic.msg(player, "카드 #" + id + " 삭제", ChatFormatting.YELLOW);
             }
+            case "lobby_common_toggle" -> {
+                dev.setCommonEnabled(!dev.isCommonEnabled());
+                DeviceLogic.msg(player, "공용 비밀번호 " + (dev.isCommonEnabled() ? "사용" : "미사용"), ChatFormatting.AQUA);
+            }
+            case "lobby_household_toggle" -> {
+                dev.setHouseholdEnabled(!dev.isHouseholdEnabled());
+                DeviceLogic.msg(player, "세대 비밀번호 출입 " + (dev.isHouseholdEnabled() ? "사용" : "미사용"), ChatFormatting.AQUA);
+            }
             case "lobby_card_delete_all" -> {
                 int n = data.deleteCards(cid, scopeDong);
                 DeviceLogic.msg(player, (scopeDong >= 0 ? scopeDong + "동 " : "단지 ") + "카드 " + n + "장을 모두 삭제했습니다", ChatFormatting.YELLOW);

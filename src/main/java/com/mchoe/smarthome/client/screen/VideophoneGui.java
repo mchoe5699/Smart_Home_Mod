@@ -203,12 +203,12 @@ public class VideophoneGui extends DeviceGui {
             g.drawString(font, "관할경비실 " + DeviceLogic.num(data.getInt("guard")) + " · " + DeviceLogic.num(data.getInt("dong")) + "동 "
                     + DeviceLogic.num(data.getInt("ho")) + "호", x + 8, y + 22, 0xFFFFFF, false);
             button(g, x + 8, y + 36, w - 16, 26, "관할경비실·세대번호 설정", 0xFF1E3A5A, 0xFFFFFFFF, mx, my, this::openSettings);
-            g.drawString(font, "세대 비밀번호: " + (data.getBoolean("hasPw") ? "설정됨" : "없음"), x + 8, y + 74, 0x9AA7B8, false);
+            g.drawString(font, "세대 비밀번호: " + (data.getBoolean("hasPw") ? "변경됨" : "초기값 1234"), x + 8, y + 74, 0x9AA7B8, false);
             button(g, x + 8, y + 88, w - 16, 26, "세대 비밀번호 설정", 0xFF1E3A5A, 0xFFFFFFFF, mx, my, () -> {
                 pwEntry = true;
                 input = "";
             });
-            g.drawString(font, "로비폰 [열쇠] → 호*비밀번호 → #", x + 8, y + 124, 0x707880, false);
+            g.drawString(font, "로비폰: 호 [열쇠] 비밀번호 [호출]", x + 8, y + 124, 0x707880, false);
             return;
         }
         g.fill(x + 6, y + 18, x + w - 6, y + 34, 0xFF101820);

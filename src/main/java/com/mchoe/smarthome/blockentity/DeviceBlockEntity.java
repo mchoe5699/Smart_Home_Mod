@@ -33,6 +33,10 @@ public class DeviceBlockEntity extends BlockEntity {
     private String adminPw = "";
     /** 경비실기 외출 / 우회 경비실 번호 */
     private boolean away;
+    /** 로비폰: 공용 비밀번호 사용 여부 */
+    private boolean commonEnabled = true;
+    /** 로비폰: 세대 비밀번호 출입 사용 여부 */
+    private boolean householdEnabled = true;
     private int bypass = NetworkData.UNSET;
     private final List<String> log = new ArrayList<>();
     private int doorTicks;
@@ -61,6 +65,18 @@ public class DeviceBlockEntity extends BlockEntity {
     public boolean isAway() { return away; }
     public int getBypass() { return bypass; }
     public boolean hasAdminPw() { return !adminPw.isEmpty(); }
+    public boolean isCommonEnabled() { return commonEnabled; }
+    public boolean isHouseholdEnabled() { return householdEnabled; }
+
+    public void setHouseholdEnabled(boolean on) {
+        householdEnabled = on;
+        setChanged();
+    }
+
+    public void setCommonEnabled(boolean on) {
+        commonEnabled = on;
+        setChanged();
+    }
 
     public boolean checkAdmin(String pw) {
         return adminPw.isEmpty() || adminPw.equals(pw);
@@ -178,6 +194,8 @@ public class DeviceBlockEntity extends BlockEntity {
         tag.putString("adminPw", adminPw);
         tag.putBoolean("away", away);
         tag.putInt("bypass", bypass);
+        tag.putBoolean("commonEnabled", commonEnabled);
+        tag.putBoolean("householdEnabled", householdEnabled);
         tag.putInt("doorTicks", doorTicks);
         ListTag l = new ListTag();
         for (String s : log) l.add(StringTag.valueOf(s));
@@ -194,6 +212,8 @@ public class DeviceBlockEntity extends BlockEntity {
         linked = tag.getBoolean("linked");
         if (tag.contains("adminPw")) adminPw = tag.getString("adminPw");
         away = tag.getBoolean("away");
+        if (tag.contains("commonEnabled")) commonEnabled = tag.getBoolean("commonEnabled");
+        if (tag.contains("householdEnabled")) householdEnabled = tag.getBoolean("householdEnabled");
         bypass = tag.contains("bypass") ? tag.getInt("bypass") : NetworkData.UNSET;
         if (tag.contains("log")) {
             log.clear();

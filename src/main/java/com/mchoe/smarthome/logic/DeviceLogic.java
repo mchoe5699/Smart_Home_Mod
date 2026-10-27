@@ -202,12 +202,14 @@ public final class DeviceLogic {
             if (type.internal && doorCam != null) tag.putLong("doorCam", doorCam.asLong());
             if (type.internal) {
                 tag.putString("notice", cx.notice);
-                tag.putBoolean("hasPw", !data.householdPassword(cid, d.getDong(), d.getHo()).isEmpty());
+                tag.putBoolean("hasPw", data.hasCustomHouseholdPassword(cid, d.getDong(), d.getHo()));
             }
             if (type == DeviceType.WALLPAD) HomeLogic.writeHousehold(level, data, cid, d.getDong(), d.getHo(), tag);
             if (type.internal) SecurityLogic.write(level, data, cid, d.getDong(), d.getHo(), tag);
             if (type == DeviceType.GUARD_STATION) SecurityLogic.writeAlerts(data, cid, tag);
             if (type == DeviceType.LOBBY_PHONE) {
+                tag.putBoolean("commonEnabled", d.isCommonEnabled());
+                tag.putBoolean("householdEnabled", d.isHouseholdEnabled());
                 int scope = d.getDong() == OUTER_LOBBY_DONG ? NetworkData.UNSET : d.getDong();
                 tag.putBoolean("commonSet", !cx.commonPassword.isEmpty());
                 tag.putInt("cardCount", data.countCards(cid, scope));
@@ -283,7 +285,10 @@ public final class DeviceLogic {
             case "open_door" -> openDoor(level, player, pos);
             case "say" -> CallManager.say(level, pos, player, args.getString("text"));
             case "password" -> lobbyPassword(level, player, dev, args.getString("input"));
-            case "lobby_admin", "lobby_common_pw", "lobby_card_register", "lobby_card_delete", "lobby_card_delete_all" ->
+            case "household_entry" -> householdEntry(level, player, dev, args.getInt("dong"), args.getInt("ho"), args.getString("pw"));
+            case "common_entry" -> commonEntry(level, player, dev, args.getString("pw"), args.getBoolean("silent"));
+            case "lobby_pw_change" -> lobbyPwChange(level, player, dev, args.getInt("ho"), args.getString("old"), args.getString("new"));
+            case "lobby_admin", "lobby_common_pw", "lobby_card_register", "lobby_card_delete", "lobby_card_delete_all", "lobby_common_toggle", "lobby_household_toggle" ->
                     AdminLogic.lobbyAdmin(player, level, dev, action, args);
             default -> HomeLogic.handleWallpad(player, level, dev, action, args);
         };
@@ -306,7 +311,14 @@ public final class DeviceLogic {
         }
         String newPw = args.getString("adminPw").trim();
         if (!newPw.isEmpty() && !newPw.matches("\\d{4,8}")) return "관리 비밀번호는 숫자 4~8자리입니다";
+        String newHousePw = args.getString("householdPw").trim();
+        if (!newHousePw.isEmpty() && !newHousePw.matches("\\d{4,8}")) return "세대 비밀번호는 숫자 4~8자리입니다";
         dev.setNumbers(guard, dong, ho);
+        if (!newHousePw.isEmpty() && dev.getLevel() instanceof ServerLevel sl) {
+            NetworkData data = NetworkData.get(sl);
+            int cid = data.complexAt(dev.getBlockPos());
+            if (cid >= 0 && dong >= 0 && ho >= 0) data.setHouseholdPassword(cid, dong, ho, newHousePw);
+        }
         if (args.getBoolean("adminClear")) dev.setAdminPw("");
         else if (!newPw.isEmpty()) dev.setAdminPw(newPw);
         return null;
@@ -553,6 +565,83 @@ public final class DeviceLogic {
         }
         if (unlock(level, dev.getBlockPos(), null) == 0) msg(player, who + " 인증 - " + NO_DOOR, ChatFormatting.YELLOW);
         else msg(player, who + " 인증 - 문이 열렸습니다", ChatFormatting.GREEN);
+        return null;
+    }
+
+    /** 로비폰 세대 비밀번호 출입: (동) 호 [열쇠] 비밀번호 [호출] */
+    private static String householdEntry(ServerLevel level, ServerPlayer player, DeviceBlockEntity dev, int dong, int ho, String pw) {
+        if (dev.getDeviceType() != DeviceType.LOBBY_PHONE) return null;
+        NetworkData data = NetworkData.get(level);
+        int cid = data.complexAt(dev.getBlockPos());
+        if (cid < 0) return OUTSIDE;
+        if (!dev.isHouseholdEnabled()) return "이 로비폰은 세대 비밀번호 출입을 사용하지 않습니다";
+        if (dev.getDong() != OUTER_LOBBY_DONG) dong = dev.getDong();
+        if (dong < 0 || ho < 0) return "동·호를 입력하세요";
+        boolean exists = false;
+        for (NetworkData.Device d : data.devicesIn(cid)) if (d.type.internal && d.dong == dong && d.ho == ho) exists = true;
+        if (!exists || !data.householdPassword(cid, dong, ho).equals(pw == null ? "" : pw.trim())) {
+            level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
+            return "비밀번호가 일치하지 않습니다";
+        }
+        extra.putBoolean("entryOk", true);
+        String who = dong + "동 " + ho + "호";
+        if (unlock(level, dev.getBlockPos(), null) == 0) msg(player, who + " 인증 - " + NO_DOOR, ChatFormatting.YELLOW);
+        else msg(player, who + " 인증 - 문이 열렸습니다", ChatFormatting.GREEN);
+        return null;
+    }
+
+    /** 로비폰 공용 비밀번호 출입: [호출] 공용비밀번호 (맞으면 바로 열림) */
+    private static String commonEntry(ServerLevel level, ServerPlayer player, DeviceBlockEntity dev, String pw, boolean silent) {
+        if (dev.getDeviceType() != DeviceType.LOBBY_PHONE) return null;
+        NetworkData data = NetworkData.get(level);
+        int cid = data.complexAt(dev.getBlockPos());
+        if (cid < 0) return silent ? null : OUTSIDE;
+        NetworkData.Complex cx = data.getComplex(cid);
+        if (!dev.isCommonEnabled()) return silent ? null : "이 로비폰은 공용 비밀번호를 사용하지 않습니다";
+        if (cx == null || cx.commonPassword.isEmpty()) return silent ? null : "공용 비밀번호가 설정되어 있지 않습니다";
+        if (!cx.commonPassword.equals(pw == null ? "" : pw.trim())) {
+            if (silent) return null;
+            level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
+            return "공용 비밀번호가 일치하지 않습니다";
+        }
+        extra.putBoolean("entryOk", true);
+        if (unlock(level, dev.getBlockPos(), null) == 0) msg(player, "공용 비밀번호 인증 - " + NO_DOOR, ChatFormatting.YELLOW);
+        else msg(player, "공용 비밀번호 인증 - 문이 열렸습니다", ChatFormatting.GREEN);
+        return null;
+    }
+
+    /** 세대에서 비밀번호를 바꿀 수 있는 기기 (월패드, 비디오폰, 다이얼 인터폰) */
+    private static boolean canSetHouseholdPw(DeviceType t) {
+        return t == DeviceType.WALLPAD || t == DeviceType.VIDEOPHONE || t == DeviceType.INTERPHONE;
+    }
+
+    /**
+     * 로비폰에서 세대 비밀번호 변경: [열쇠] 호 [호출] 기존 [호출] 새 비밀번호 [호출].
+     * 동 번호가 부여된 로비폰에서만, 그리고 세대 안에 비밀번호를 바꿀 수 있는 기기가 없을 때만.
+     */
+    private static String lobbyPwChange(ServerLevel level, ServerPlayer player, DeviceBlockEntity dev, int ho, String old, String neu) {
+        if (dev.getDeviceType() != DeviceType.LOBBY_PHONE) return null;
+        if (dev.getDong() < 0 || dev.getDong() == OUTER_LOBBY_DONG) return "단지 출입용 로비폰에서는 세대 비밀번호를 바꿀 수 없습니다";
+        NetworkData data = NetworkData.get(level);
+        int cid = data.complexAt(dev.getBlockPos());
+        if (cid < 0) return OUTSIDE;
+        int dong = dev.getDong();
+        boolean exists = false;
+        for (NetworkData.Device d : data.devicesIn(cid)) {
+            if (!d.type.internal || d.dong != dong || d.ho != ho) continue;
+            exists = true;
+            if (canSetHouseholdPw(d.type)) return "이 세대는 세대 내부기기(" + d.type.korean + ")에서 비밀번호를 변경하세요";
+        }
+        if (!exists) return dong + "동 " + ho + "호 세대기가 없습니다";
+        if (!data.householdPassword(cid, dong, ho).equals(old == null ? "" : old.trim())) {
+            level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
+            return "기존 비밀번호가 일치하지 않습니다";
+        }
+        neu = neu == null ? "" : neu.trim();
+        if (!neu.matches("\\d{4,8}")) return "새 비밀번호는 숫자 4~8자리입니다";
+        data.setHouseholdPassword(cid, dong, ho, neu);
+        level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 0.7f, 1.8f);
+        msg(player, dong + "동 " + ho + "호 세대 비밀번호를 변경했습니다", ChatFormatting.GREEN);
         return null;
     }
 

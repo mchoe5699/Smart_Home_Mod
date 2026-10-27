@@ -411,8 +411,16 @@ public class NetworkData extends SavedData {
 
     // ------------------------------------------------------------------ 비밀번호
 
+    /** 세대 비밀번호 초기값 */
+    public static final String DEFAULT_HOUSEHOLD_PW = "1234";
+
+    /** 세대 비밀번호 (바꾼 적 없으면 초기값 1234) */
     public String householdPassword(int complex, int dong, int ho) {
-        return householdPasswords.getOrDefault(householdKey(complex, dong, ho), "");
+        return householdPasswords.getOrDefault(householdKey(complex, dong, ho), DEFAULT_HOUSEHOLD_PW);
+    }
+
+    public boolean hasCustomHouseholdPassword(int complex, int dong, int ho) {
+        return householdPasswords.containsKey(householdKey(complex, dong, ho));
     }
 
     public void setHouseholdPassword(int complex, int dong, int ho, String pw) {

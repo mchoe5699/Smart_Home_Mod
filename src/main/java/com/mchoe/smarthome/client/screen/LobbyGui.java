@@ -4,21 +4,29 @@ import com.mchoe.smarthome.logic.DeviceLogic;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 
 /**
  * 로비폰 (공동현관 출입 통제기).
  * 스테인리스 패널 · 상단 카메라 · LCD · 3x4 키패드 · [호출][경비실][취소][열쇠] · RF 카드 리더.
- * [⚙] → 1.번호 설정 / 2.관리자 모드 (공용 비밀번호 변경, 카드 등록·삭제·전체삭제)
+ *
+ * 단지 출입용(9999동): 호출 = 동 [호출] 호 [호출] / 세대 비밀번호 = 동 [호출] 호 [열쇠] 비밀번호 [호출]
+ * 동 로비: 호출 = 호 [호출] / 세대 비밀번호 = 호 [열쇠] 비밀번호 [호출]
+ * 공용 비밀번호: 대기 상태에서 [호출] 공용비밀번호 (맞으면 바로 열림)
+ * 세대 비밀번호 변경(동 로비만): 대기 상태에서 [열쇠] 호 [호출] 기존 [호출] 새 비밀번호 [호출]
+ * [⚙] → 1.번호 설정 / 2.관리자 모드 (공용 비밀번호 변경, 카드, 공용·세대 비밀번호 사용 여부)
  */
 public class LobbyGui extends DeviceGui {
-    private static final int STEEL = 0xFFA9AEB4;
+    private enum Admin { NONE, GEAR, WAIT, MENU, COMMON, REGISTER, DELETE_ID, DELETE_ALL }
 
-    private enum Admin { NONE, GEAR, AUTH, WAIT, MENU, COMMON, REGISTER, DELETE_ID, DELETE_ALL }
+    /** 일반 사용 단계 */
+    private enum Step { IDLE, HO, ENTRY_PW, COMMON, CHG_HO, CHG_OLD, CHG_NEW }
 
     private String input = "";
-    private boolean pwMode;
+    private Step step = Step.IDLE;
+    private int enteredDong = -1, enteredHo = -1;
+    private String chgOld = "";
     private Admin admin = Admin.NONE;
-    private String auth = "";
 
     public LobbyGui(BlockPos pos, CompoundTag data) {
         super(pos, data, 190, 312);
@@ -30,12 +38,12 @@ public class LobbyGui extends DeviceGui {
 
     @Override
     protected void onDataChanged() {
+        if (data.getBoolean("entryOk")) reset();
         if (data.getBoolean("adminOk")) {
             admin = Admin.MENU;
             input = "";
         } else if (data.getBoolean("adminFail")) {
             admin = Admin.NONE;
-            auth = "";
             input = "";
         }
     }
@@ -43,6 +51,33 @@ public class LobbyGui extends DeviceGui {
     /** 관리자 요청 인자. 인증(관리 비밀번호)은 DeviceGui.act 가 자동으로 붙인다 */
     private CompoundTag authTag() {
         return new CompoundTag();
+    }
+
+    private void reset() {
+        step = Step.IDLE;
+        input = "";
+        enteredDong = -1;
+        enteredHo = -1;
+        chgOld = "";
+    }
+
+    private void tell(String s) {
+        if (minecraft.player != null) minecraft.player.displayClientMessage(Component.literal(s), true);
+    }
+
+    private static int num(String s) {
+        try {
+            return s.isEmpty() ? -1 : Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private void callUnit(int dong, int ho) {
+        CompoundTag t = new CompoundTag();
+        t.putInt("dong", dong);
+        t.putInt("ho", ho);
+        act("call_unit", t);
     }
 
     // ------------------------------------------------------------------ 키 입력
@@ -53,14 +88,142 @@ public class LobbyGui extends DeviceGui {
             adminKey(c);
             return;
         }
+        if (!idle() && status() != DeviceLogic.STATUS_RINGING) return;
         if (c == '<') {
             if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
         } else if (c == '\n' || c == '#') {
-            if (pwMode) submitPassword();
-            else if (c == '\n') pressCall();
-        } else if (input.length() < 16) {
+            pressCall();
+        } else if (c >= '0' && c <= '9' && input.length() < 8) {
             input += c;
+            // 공용 비밀번호는 맞으면 바로 열림
+            if (step == Step.COMMON && input.length() >= 4) {
+                CompoundTag t = new CompoundTag();
+                t.putString("pw", input);
+                t.putBoolean("silent", true);
+                act("common_entry", t);
+            }
         }
+    }
+
+    /** [호출] */
+    private void pressCall() {
+        if (admin != Admin.NONE) {
+            adminKey('#');
+            return;
+        }
+        if (status() == DeviceLogic.STATUS_RINGING) {
+            act("answer");
+            return;
+        }
+        if (!idle()) return;
+        switch (step) {
+            case IDLE -> {
+                if (input.isEmpty()) {
+                    if (!data.getBoolean("commonEnabled")) {
+                        tell("이 로비폰은 공용 비밀번호를 사용하지 않습니다");
+                        return;
+                    }
+                    step = Step.COMMON;
+                } else if (outer()) {
+                    enteredDong = num(input);
+                    input = "";
+                    step = Step.HO;
+                } else {
+                    callUnit(data.getInt("dong"), num(input));
+                    reset();
+                }
+            }
+            case HO -> {
+                if (input.isEmpty()) return;
+                callUnit(enteredDong, num(input));
+                reset();
+            }
+            case ENTRY_PW -> {
+                CompoundTag t = new CompoundTag();
+                t.putInt("dong", enteredDong);
+                t.putInt("ho", enteredHo);
+                t.putString("pw", input);
+                act("household_entry", t);
+                reset();
+            }
+            case COMMON -> {
+                CompoundTag t = new CompoundTag();
+                t.putString("pw", input);
+                act("common_entry", t);
+                reset();
+            }
+            case CHG_HO -> {
+                if (input.isEmpty()) return;
+                enteredHo = num(input);
+                input = "";
+                step = Step.CHG_OLD;
+            }
+            case CHG_OLD -> {
+                chgOld = input;
+                input = "";
+                step = Step.CHG_NEW;
+            }
+            case CHG_NEW -> {
+                CompoundTag t = new CompoundTag();
+                t.putInt("ho", enteredHo);
+                t.putString("old", chgOld);
+                t.putString("new", input);
+                act("lobby_pw_change", t);
+                reset();
+            }
+        }
+    }
+
+    /** [열쇠] */
+    private void pressKey() {
+        if (admin != Admin.NONE || !idle()) return;
+        switch (step) {
+            case IDLE -> {
+                if (input.isEmpty()) {
+                    // 세대 비밀번호 변경 (동 번호가 부여된 로비폰만)
+                    if (outer() || data.getInt("dong") < 0) {
+                        tell("단지 출입용 로비폰에서는 세대 비밀번호를 변경할 수 없습니다");
+                        return;
+                    }
+                    step = Step.CHG_HO;
+                } else if (outer()) {
+                    tell("동 번호를 누르고 [호출], 호 번호를 누른 뒤 [열쇠]를 누르세요");
+                } else if (!data.getBoolean("householdEnabled")) {
+                    tell("이 로비폰은 세대 비밀번호 출입을 사용하지 않습니다");
+                    input = "";
+                } else {
+                    enteredDong = data.getInt("dong");
+                    enteredHo = num(input);
+                    input = "";
+                    step = Step.ENTRY_PW;
+                }
+            }
+            case HO -> {
+                if (input.isEmpty()) return;
+                if (!data.getBoolean("householdEnabled")) {
+                    tell("이 로비폰은 세대 비밀번호 출입을 사용하지 않습니다");
+                    reset();
+                    return;
+                }
+                enteredHo = num(input);
+                input = "";
+                step = Step.ENTRY_PW;
+            }
+            default -> { }
+        }
+    }
+
+    private void cancel() {
+        if (admin == Admin.NONE) {
+            if (!idle()) act("hangup");
+            reset();
+            return;
+        }
+        input = "";
+        admin = switch (admin) {
+            case COMMON, REGISTER, DELETE_ID, DELETE_ALL -> Admin.MENU;
+            default -> Admin.NONE;
+        };
     }
 
     private void adminKey(char c) {
@@ -93,6 +256,8 @@ public class LobbyGui extends DeviceGui {
                         admin = Admin.NONE;
                         openSettings();
                     }
+                    case '7' -> act("lobby_common_toggle", authTag());
+                    case '8' -> act("lobby_household_toggle", authTag());
                     default -> { }
                 }
             }
@@ -104,7 +269,7 @@ public class LobbyGui extends DeviceGui {
             }
             case WAIT -> { }
             default -> {
-                // 숫자 입력 단계 (AUTH, COMMON, REGISTER, DELETE_ID)
+                // 숫자 입력 단계 (COMMON, REGISTER, DELETE_ID)
                 if (c == '<') {
                     if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
                 } else if (confirm) {
@@ -118,11 +283,6 @@ public class LobbyGui extends DeviceGui {
 
     private void submitAdmin() {
         switch (admin) {
-            case AUTH -> {
-                auth = input;
-                admin = Admin.WAIT;
-                act("lobby_admin", authTag());
-            }
             case COMMON -> {
                 CompoundTag t = authTag();
                 t.putString("pw", input);
@@ -155,47 +315,6 @@ public class LobbyGui extends DeviceGui {
         input = "";
     }
 
-    private void cancel() {
-        if (admin == Admin.NONE) {
-            if (!idle()) act("hangup");
-            else if (!input.isEmpty()) input = "";
-            else pwMode = false;
-            return;
-        }
-        input = "";
-        admin = switch (admin) {
-            case COMMON, REGISTER, DELETE_ID, DELETE_ALL -> Admin.MENU;
-            default -> Admin.NONE;
-        };
-        if (admin == Admin.NONE) auth = "";
-    }
-
-    private void submitPassword() {
-        CompoundTag t = new CompoundTag();
-        t.putString("input", input);
-        act("password", t);
-        input = "";
-        pwMode = false;
-    }
-
-    private void pressCall() {
-        if (admin != Admin.NONE) {
-            adminKey('#');
-            return;
-        }
-        if (status() == DeviceLogic.STATUS_RINGING) {
-            act("answer");
-            return;
-        }
-        if (pwMode) {
-            submitPassword();
-            return;
-        }
-        if (input.isEmpty()) return;
-        callPair("call_unit", input, outer() ? -1 : data.getInt("dong"));
-        input = "";
-    }
-
     // ------------------------------------------------------------------ 그리기
 
     @Override
@@ -214,25 +333,17 @@ public class LobbyGui extends DeviceGui {
             if (admin == Admin.NONE) act("call_guard");
         });
         button(g, fx, ky + 64, fw, 26, "취소", 0xFFC98A2E, 0xFFFFFFFF, mx, my, this::cancel);
-        buttonIcon(g, fx, ky + 96, fw, 26, I_KEY, "", pwMode ? 0xFFC98A2E : 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> {
-            if (admin != Admin.NONE) return;
-            pwMode = !pwMode;
-            input = "";
-        });
+        boolean keyStep = step == Step.ENTRY_PW || step == Step.CHG_HO || step == Step.CHG_OLD || step == Step.CHG_NEW;
+        buttonIcon(g, fx, ky + 96, fw, 26, I_KEY, "", keyStep ? 0xFFC98A2E : 0xFF6C7076, 0xFFFFFFFF, mx, my, this::pressKey);
 
         int ry = y + h - 46;
         g.drawString(font, "RF 카드", x + 56, ry + 6, 0xFF9AD0FF, false);
         g.drawString(font, "출입카드를 들고 우클릭", x + 56, ry + 19, 0xFF707880, false);
 
         button(g, x + w - 24, y + 1, 22, 10, "⚙", admin != Admin.NONE ? 0xFFC98A2E : 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> {
-            input = "";
-            pwMode = false;
-            if (admin == Admin.NONE) {
-                requestSettings(() -> admin = Admin.GEAR);
-            } else {
-                admin = Admin.NONE;
-                auth = "";
-            }
+            reset();
+            if (admin == Admin.NONE) requestSettings(() -> admin = Admin.GEAR);
+            else admin = Admin.NONE;
         });
     }
 
@@ -240,24 +351,24 @@ public class LobbyGui extends DeviceGui {
         g.fill(x, y, x + w, y + 12, 0xFFC98A2E);
         g.drawString(font, admin == Admin.GEAR ? "설정" : "관리자 모드", x + 4, y + 2, 0xFFFFFF, false);
         int cx = x + w / 2;
-        String masked = input.replaceAll("[0-9]", "●");
         switch (admin) {
             case GEAR -> {
                 g.drawString(font, "1. 번호 설정", x + 8, y + 22, 0xFFFFFF, false);
                 g.drawString(font, "2. 관리자 모드", x + 8, y + 36, 0xFFFFFF, false);
                 g.drawString(font, "번호를 누르세요", x + 8, y + 64, 0x9AA7B8, false);
             }
-            case AUTH -> {
-                centered(g, "관리자 인증", cx, y + 18, 0xFFD34E);
-                centered(g, "관리 비밀번호 입력 → #", cx, y + 32, 0x9AA7B8);
-                centered(g, masked.isEmpty() ? "_" : masked, cx, y + 52, 0xFFFFFF);
-            }
             case WAIT -> centered(g, "확인 중...", cx, y + 40, 0x9AA7B8);
             case MENU -> {
-                String[] items = {"1 공용 비밀번호", "2 카드 등록", "3 손에 든 카드 삭제", "4 카드 번호로 삭제", "5 카드 전체 삭제", "6 번호 설정"};
-                for (int i = 0; i < items.length; i++) g.drawString(font, items[i], x + 6, y + 15 + i * 11, 0xFFFFFF, false);
-                String n = "카드 " + data.getInt("cardCount");
-                g.drawString(font, n, x + w - 4 - font.width(n), y + 15, 0x4CD27A, false);
+                String[] items = {"1 공용비번 변경", "2 카드 등록", "3 든 카드 삭제", "4 번호로 삭제",
+                        "5 카드 전체삭제", "6 번호 설정",
+                        "7 공용비번 " + (data.getBoolean("commonEnabled") ? "사용" : "미사용"),
+                        "8 세대비번 " + (data.getBoolean("householdEnabled") ? "사용" : "미사용")};
+                int colW = (w - 8) / 2;
+                for (int i = 0; i < items.length; i++) {
+                    int col = i / 4, row = i % 4;
+                    fitText(g, items[i], x + 4 + col * colW, y + 16 + row * 12, colW - 2, i >= 6 ? 0x9AD0FF : 0xFFFFFF);
+                }
+                fitText(g, "등록 카드 " + data.getInt("cardCount") + "장 · 번호를 누르세요", x + 4, y + 70, w - 8, 0x4CD27A);
             }
             case COMMON -> {
                 centered(g, "새 공용 비밀번호", cx, y + 18, 0xFFD34E);
@@ -310,18 +421,48 @@ public class LobbyGui extends DeviceGui {
             centered(g, hint, cx, y + 64, 0x9AA7B8);
             return;
         }
-        if (pwMode) {
-            centered(g, "비밀번호 입력", cx, y + 18, 0xFFD34E);
-            String masked = input.replaceAll("[0-9]", "●");
-            centered(g, masked.isEmpty() ? "_" : masked, cx, y + 36, 0xFFFFFF);
-            centered(g, "공용: 번호 → #", cx, y + 56, 0x9AA7B8);
-            centered(g, outer() ? "세대: 동*호*번호 → #" : "세대: 호*번호 → #", cx, y + 68, 0x9AA7B8);
-            return;
+        String masked = input.replaceAll(".", "●");
+        switch (step) {
+            case IDLE -> {
+                centered(g, outer() ? "동 번호 → [호출]" : "호 번호 → [호출]", cx, y + 18, 0xFFFFFF);
+                centered(g, input.isEmpty() ? "_" : input + (outer() ? "동" : "호"), cx, y + 32, 0x9AD0FF);
+                if (data.getBoolean("householdEnabled")) {
+                    fitText(g, outer() ? "세대비번: 동[호출]호[열쇠]" : "세대비번: 호 [열쇠] 비번", x + 4, y + 48, w - 8, 0x9AA7B8);
+                }
+                if (data.getBoolean("commonEnabled")) fitText(g, "공용비번: [호출] 비번", x + 4, y + 59, w - 8, 0x9AA7B8);
+                if (!outer()) fitText(g, "비번 변경: [열쇠]", x + 4, y + 70, w - 8, 0x9AA7B8);
+            }
+            case HO -> {
+                centered(g, enteredDong + "동 · 호 번호", cx, y + 18, 0xFFD34E);
+                centered(g, input.isEmpty() ? "_" : input + "호", cx, y + 34, 0x9AD0FF);
+                centered(g, "[호출] 세대 호출", cx, y + 52, 0x9AA7B8);
+                if (data.getBoolean("householdEnabled")) centered(g, "[열쇠] 세대 비밀번호", cx, y + 64, 0x9AA7B8);
+            }
+            case ENTRY_PW -> {
+                centered(g, (enteredDong >= 0 ? enteredDong + "동 " : "") + enteredHo + "호", cx, y + 18, 0xFFD34E);
+                centered(g, "세대 비밀번호 → [호출]", cx, y + 32, 0x9AA7B8);
+                centered(g, masked.isEmpty() ? "_" : masked, cx, y + 50, 0xFFFFFF);
+            }
+            case COMMON -> {
+                centered(g, "공용 비밀번호", cx, y + 18, 0xFFD34E);
+                centered(g, masked.isEmpty() ? "_" : masked, cx, y + 38, 0xFFFFFF);
+                centered(g, "맞으면 바로 열립니다", cx, y + 60, 0x9AA7B8);
+            }
+            case CHG_HO -> {
+                centered(g, "세대 비밀번호 변경", cx, y + 18, 0xFFD34E);
+                centered(g, "호 번호 → [호출]", cx, y + 32, 0x9AA7B8);
+                centered(g, input.isEmpty() ? "_" : input + "호", cx, y + 50, 0x9AD0FF);
+            }
+            case CHG_OLD -> {
+                centered(g, enteredHo + "호 · 기존 비밀번호", cx, y + 18, 0xFFD34E);
+                centered(g, "→ [호출]  (초기 1234)", cx, y + 32, 0x9AA7B8);
+                centered(g, masked.isEmpty() ? "_" : masked, cx, y + 50, 0xFFFFFF);
+            }
+            case CHG_NEW -> {
+                centered(g, enteredHo + "호 · 새 비밀번호", cx, y + 18, 0xFFD34E);
+                centered(g, "숫자 4~8자리 → [호출]", cx, y + 32, 0x9AA7B8);
+                centered(g, masked.isEmpty() ? "_" : masked, cx, y + 50, 0xFFFFFF);
+            }
         }
-        centered(g, outer() ? "동*호 입력 후 [호출]" : "호수 입력 후 [호출]", cx, y + 18, 0xFFFFFF);
-        String shown = input.isEmpty() ? "_" : (outer() ? input.replace("*", "동 ") + (input.contains("*") ? "호" : "") : input + "호");
-        centered(g, shown, cx, y + 36, 0x9AD0FF);
-        centered(g, "[열쇠] 비밀번호", cx, y + 56, 0x9AA7B8);
-        centered(g, "[⚙] 설정·관리자", cx, y + 68, 0x9AA7B8);
     }
 }

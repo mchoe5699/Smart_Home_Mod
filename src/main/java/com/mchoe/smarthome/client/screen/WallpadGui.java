@@ -445,7 +445,7 @@ public class WallpadGui extends DeviceGui {
         buttonIcon(g, x + 10, y + 38, 200, 20, I_GEAR, "관할경비실·세대번호 설정", 0xFF1E4D8C, 0xFFFFFFFF, mx, my, this::openSettings);
 
         g.drawString(font, "세대 비밀번호 (공동현관 출입용)", x + 10, y + 74, 0xFFD34E, false);
-        g.drawString(font, data.getBoolean("hasPw") ? "설정됨" : "설정 안 됨", x + 10, y + 88, data.getBoolean("hasPw") ? 0x4CD27A : 0x9AA7B8, false);
+        g.drawString(font, data.getBoolean("hasPw") ? "변경됨" : "초기값 (1234)", x + 10, y + 88, data.getBoolean("hasPw") ? 0x4CD27A : 0x9AA7B8, false);
         pwBox.setX(x + 10);
         pwBox.setY(y + 100);
         button(g, x + 110, y + 100, 50, 16, "저장", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> {
@@ -459,6 +459,6 @@ public class WallpadGui extends DeviceGui {
             t.putString("pw", "");
             act("set_pw", t);
         });
-        g.drawString(font, "로비폰에서 [열쇠] → 호*비밀번호 → #", x + 10, y + 124, 0x9AA7B8, false);
+        g.drawString(font, "로비폰: 호 [열쇠] 비밀번호 [호출] · 삭제 시 1234로 초기화", x + 10, y + 124, 0x9AA7B8, false);
     }
 }
