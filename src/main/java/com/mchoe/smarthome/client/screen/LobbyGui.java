@@ -38,13 +38,11 @@ public class LobbyGui extends DeviceGui {
             auth = "";
             input = "";
         }
-        if (data.contains("newAuth")) auth = data.getString("newAuth");
     }
 
+    /** 관리자 요청 인자. 인증(관리 비밀번호)은 DeviceGui.act 가 자동으로 붙인다 */
     private CompoundTag authTag() {
-        CompoundTag t = new CompoundTag();
-        t.putString("auth", auth);
-        return t;
+        return new CompoundTag();
     }
 
     // ------------------------------------------------------------------ 키 입력
@@ -73,14 +71,10 @@ public class LobbyGui extends DeviceGui {
                     admin = Admin.NONE;
                     openSettings();
                 } else if (c == '2') {
+                    // [⚙] 진입 때 관리 비밀번호를 이미 확인했으므로 바로 관리자 모드
                     input = "";
-                    if (data.getBoolean("commonSet")) {
-                        admin = Admin.AUTH;
-                    } else {
-                        auth = "";
-                        admin = Admin.WAIT;
-                        act("lobby_admin", authTag());
-                    }
+                    admin = Admin.WAIT;
+                    act("lobby_admin", authTag());
                 }
             }
             case MENU -> {
@@ -255,7 +249,7 @@ public class LobbyGui extends DeviceGui {
             }
             case AUTH -> {
                 centered(g, "관리자 인증", cx, y + 18, 0xFFD34E);
-                centered(g, "공용 비밀번호 입력 → #", cx, y + 32, 0x9AA7B8);
+                centered(g, "관리 비밀번호 입력 → #", cx, y + 32, 0x9AA7B8);
                 centered(g, masked.isEmpty() ? "_" : masked, cx, y + 52, 0xFFFFFF);
             }
             case WAIT -> centered(g, "확인 중...", cx, y + 40, 0x9AA7B8);

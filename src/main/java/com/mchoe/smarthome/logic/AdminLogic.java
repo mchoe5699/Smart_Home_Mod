@@ -158,8 +158,8 @@ public final class AdminLogic {
     // ------------------------------------------------------------------ 로비폰 관리자 모드
 
     /**
-     * 로비폰 관리자 기능. 모든 요청에 관리자 인증(현재 공용 비밀번호)을 함께 보낸다.
-     * 공용 비밀번호가 아직 없으면 인증 없이 들어갈 수 있다.
+     * 로비폰 관리자 기능. 인증은 로비폰의 관리 비밀번호로 한다 (공용 비밀번호와는 별개).
+     * 관리 비밀번호가 없으면 인증 없이 들어갈 수 있다.
      * @return 실패 사유 (성공이면 null)
      */
     static String lobbyAdmin(ServerPlayer player, ServerLevel level, DeviceBlockEntity dev, String action, CompoundTag args) {
@@ -168,11 +168,10 @@ public final class AdminLogic {
         int cid = data.complexAt(dev.getBlockPos());
         NetworkData.Complex cx = data.getComplex(cid);
         if (cx == null) return "단지 구획 밖입니다";
-        String auth = args.getString("auth");
-        if (!cx.commonPassword.isEmpty() && !cx.commonPassword.equals(auth)) {
+        if (!dev.checkAdmin(args.getString("auth"))) {
             level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
             DeviceLogic.extra().putBoolean("adminFail", true);
-            return "관리자 인증 실패 (공용 비밀번호가 다릅니다)";
+            return "관리자 인증 실패 (관리 비밀번호가 다릅니다)";
         }
         // 일반 로비는 그 동의 세대 카드만, 단지 외곽 로비(9999동)는 단지 전체 카드를 관리
         int scopeDong = dev.getDong() == DeviceLogic.OUTER_LOBBY_DONG ? NetworkData.UNSET : dev.getDong();
@@ -185,7 +184,6 @@ public final class AdminLogic {
                 String pw = args.getString("pw").trim();
                 if (!pw.isEmpty() && !pw.matches("\\d{4,8}")) return "공용 비밀번호는 숫자 4~8자리입니다";
                 data.setCommonPassword(cid, pw);
-                DeviceLogic.extra().putString("newAuth", pw);
                 DeviceLogic.msg(player, pw.isEmpty() ? "공용 비밀번호를 삭제했습니다" : "공용 비밀번호를 변경했습니다", ChatFormatting.GREEN);
             }
             case "lobby_card_register" -> {
