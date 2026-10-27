@@ -148,6 +148,9 @@ public final class DeviceLogic {
         tag.putInt("dong", d.getDong());
         tag.putInt("ho", d.getHo());
         tag.putBoolean("doorOpen", d.isDoorOpen());
+        tag.putBoolean("linked", d.isLinked());
+        NetworkData.Device reg = NetworkData.get(level).getDevice(pos);
+        tag.putInt("doorCount", reg == null ? 0 : reg.doors.size());
         NetworkData data = NetworkData.get(level);
         int cid = data.complexAt(pos);
         NetworkData.Complex cx = data.getComplex(cid);
@@ -186,7 +189,7 @@ public final class DeviceLogic {
                     t.putString("label", label(o));
                     cctv.add(t);
                 }
-                if (o.type == DeviceType.DOOR_CAMERA && o.dong == d.getDong() && o.ho == d.getHo() && doorCam == null) doorCam = o.pos;
+                if (o.type == DeviceType.DOOR_CAMERA && o.linked && o.dong == d.getDong() && o.ho == d.getHo() && doorCam == null) doorCam = o.pos;
             }
             tag.putBoolean("myGuardExists", myGuardExists);
             if (type == DeviceType.GUARD_STATION) tag.put("cctv", cctv);
@@ -262,8 +265,7 @@ public final class DeviceLogic {
             }
             case GUARD -> guard = clamp(args.getInt("guard"));
             case DOOR -> {
-                dong = clamp(args.getInt("dong"));
-                ho = clamp(args.getInt("ho"));
+                return "도어카메라·도어폰은 홈 링커로 세대기와 연동하세요";
             }
         }
         dev.setNumbers(guard, dong, ho);
@@ -366,7 +368,7 @@ public final class DeviceLogic {
 
     private static String ringHousehold(ServerLevel level, ServerPlayer player, DeviceBlockEntity dev) {
         if (dev.getDeviceType().settings != DeviceType.SettingsKind.DOOR) return null;
-        if (dev.getDong() < 0 || dev.getHo() < 0) return "먼저 세대번호(동·호)를 설정하세요";
+        if (!dev.isLinked() || dev.getDong() < 0 || dev.getHo() < 0) return "연동된 세대가 없습니다. 홈 링커로 세대기와 연동하세요";
         NetworkData data = NetworkData.get(level);
         int cid = data.complexAt(dev.getBlockPos());
         if (cid < 0) return OUTSIDE;
@@ -390,16 +392,38 @@ public final class DeviceLogic {
             if (other != null && other.type.isEntrance()) door = c.answered;
         }
         if (door == null) return "문을 열 수 있는 출입 호출이 없습니다";
-        unlock(level, door);
+        if (unlock(level, door, pos) == 0) return NO_DOOR;
         msg(player, "출입문을 열었습니다", ChatFormatting.GREEN);
         return null;
     }
 
-    public static void unlock(ServerLevel level, BlockPos door) {
-        if (level.isLoaded(door) && level.getBlockEntity(door) instanceof DeviceBlockEntity d) {
-            d.openDoor(100);
-            level.playSound(null, door, SoundEvents.IRON_DOOR_OPEN, SoundSource.BLOCKS, 0.7f, 1.4f);
+    private static final String NO_DOOR = "연동된 문이 없습니다. 도어 링커로 기기와 문을 연동하세요";
+
+    /**
+     * 출입 기기의 문을 연다 (도어 링커로 연동한 문만).
+     * 로비폰: 로비폰에 연동한 문 / 도어카메라·도어폰: 그 세대 월패드·비디오폰·인터폰에 연동한 문
+     * @return 연 문의 수
+     */
+    public static int unlock(ServerLevel level, BlockPos entrance, BlockPos requester) {
+        NetworkData data = NetworkData.get(level);
+        NetworkData.Device e = data.getDevice(entrance);
+        if (e == null) return 0;
+        java.util.Set<BlockPos> doors = new java.util.LinkedHashSet<>();
+        if (e.type == DeviceType.LOBBY_PHONE) {
+            doors.addAll(e.doors);
+        } else {
+            NetworkData.Device req = requester == null ? null : data.getDevice(requester);
+            if (req != null && req.type.internal) doors.addAll(req.doors);
+            int cid = data.complexAt(entrance);
+            for (NetworkData.Device d : data.devicesIn(cid)) {
+                if (d.type.internal && d.dong == e.dong && d.ho == e.ho) doors.addAll(d.doors);
+            }
         }
+        if (level.isLoaded(entrance) && level.getBlockEntity(entrance) instanceof DeviceBlockEntity d) {
+            d.openDoor(100);
+            level.playSound(null, entrance, SoundEvents.IRON_DOOR_OPEN, SoundSource.BLOCKS, 0.7f, 1.4f);
+        }
+        return DoorControl.open(level, doors, 100);
     }
 
     /**
@@ -442,8 +466,8 @@ public final class DeviceLogic {
             level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
             return "비밀번호가 일치하지 않습니다";
         }
-        unlock(level, dev.getBlockPos());
-        msg(player, who + " 인증 - 문이 열렸습니다", ChatFormatting.GREEN);
+        if (unlock(level, dev.getBlockPos(), null) == 0) msg(player, who + " 인증 - " + NO_DOOR, ChatFormatting.YELLOW);
+        else msg(player, who + " 인증 - 문이 열렸습니다", ChatFormatting.GREEN);
         return null;
     }
 
@@ -463,8 +487,8 @@ public final class DeviceLogic {
             return;
         }
         level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 0.8f, 2.0f);
-        unlock(level, dev.getBlockPos());
-        msg(player, "카드 인증 - 문이 열렸습니다", ChatFormatting.GREEN);
+        if (unlock(level, dev.getBlockPos(), null) == 0) msg(player, "카드 인증 - " + NO_DOOR, ChatFormatting.YELLOW);
+        else msg(player, "카드 인증 - 문이 열렸습니다", ChatFormatting.GREEN);
     }
 
     static NetworkData.Device myDevice(NetworkData data, DeviceBlockEntity dev) {

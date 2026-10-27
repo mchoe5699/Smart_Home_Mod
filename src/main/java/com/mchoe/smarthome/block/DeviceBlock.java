@@ -162,17 +162,17 @@ public class DeviceBlock extends BaseEntityBlock {
 
     @Override
     public boolean isSignalSource(BlockState state) {
-        return true;
+        return false;
     }
 
     @Override
     public int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction dir) {
-        return state.getValue(POWERED) ? 15 : 0;
+        return 0;
     }
 
     @Override
     public int getDirectSignal(BlockState state, BlockGetter level, BlockPos pos, Direction dir) {
-        return state.getValue(POWERED) && attachDirection(state) == dir ? 15 : 0;
+        return 0;
     }
 
     // ------------------------------------------------------------------ 블록엔티티

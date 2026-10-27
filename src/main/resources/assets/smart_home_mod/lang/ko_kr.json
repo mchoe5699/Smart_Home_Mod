@@ -15,5 +15,7 @@
  "block.smart_home_mod.ventilator": "환기장치",
  "block.smart_home_mod.elevator_link": "엘리베이터 호출 연동기",
  "item.smart_home_mod.blank_card": "카드등록용 카드",
- "item.smart_home_mod.access_card": "출입용 카드"
+ "item.smart_home_mod.access_card": "출입용 카드",
+ "item.smart_home_mod.home_linker": "홈 링커",
+ "item.smart_home_mod.door_linker": "도어 링커"
 }

@@ -1,0 +1,6 @@
+{
+ "parent": "item/handheld",
+ "textures": {
+  "layer0": "smart_home_mod:item/door_linker"
+ }
+}

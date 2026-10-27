@@ -17,7 +17,7 @@ public class ControlScreen extends Screen implements DataScreen {
     private final BlockPos pos;
     private CompoundTag data;
     private final ControlKind kind;
-    private EditBox dong, ho, room;
+    private EditBox room;
     private Button stateBtn;
     private int left, top;
 
@@ -63,15 +63,10 @@ public class ControlScreen extends Screen implements DataScreen {
     protected void init() {
         left = (width - W) / 2;
         top = (height - H) / 2;
-        dong = box(left + 70, top + 34, 60, 4, "\\d{0,4}", data.getInt("dong") >= 0 ? String.valueOf(data.getInt("dong")) : "");
-        ho = box(left + 180, top + 34, 60, 4, "\\d{0,4}", data.getInt("ho") >= 0 ? String.valueOf(data.getInt("ho")) : "");
         room = box(left + 70, top + 58, 170, 12, null, data.getString("room"));
         room.setHint(Component.literal("예: 거실, 안방").withStyle(ChatFormatting.DARK_GRAY));
-        addRenderableWidget(Button.builder(Component.literal("설정 저장").withStyle(ChatFormatting.GREEN), b -> {
-            if (dong.getValue().isEmpty() || ho.getValue().isEmpty()) return;
+        addRenderableWidget(Button.builder(Component.literal("방 이름 저장").withStyle(ChatFormatting.GREEN), b -> {
             CompoundTag t = new CompoundTag();
-            t.putInt("dong", Integer.parseInt(dong.getValue()));
-            t.putInt("ho", Integer.parseInt(ho.getValue()));
             t.putString("room", room.getValue());
             ClientHooks.send(pos, "ctl_settings", t);
         }).bounds(left + 12, top + 82, W - 24, 20).build());
@@ -108,8 +103,6 @@ public class ControlScreen extends Screen implements DataScreen {
 
     @Override
     public void tick() {
-        dong.tick();
-        ho.tick();
         room.tick();
     }
 
@@ -128,11 +121,12 @@ public class ControlScreen extends Screen implements DataScreen {
         String cx = data.getString("complex");
         g.drawString(font, cx.isEmpty() ? "단지 구획 밖" : cx, left + W - 8 - font.width(cx.isEmpty() ? "단지 구획 밖" : cx), top + 6,
                 cx.isEmpty() ? 0xFF6B6B : 0xFFFFFF, false);
-        g.drawString(font, "세대", left + 12, top + 38, 0xC8D0DA, false);
-        g.drawString(font, "동", left + 134, top + 38, 0xC8D0DA, false);
-        g.drawString(font, "호", left + 244, top + 38, 0xC8D0DA, false);
+        boolean linked = data.getBoolean("linked");
+        g.drawString(font, "연동 세대", left + 12, top + 38, 0xC8D0DA, false);
+        g.drawString(font, linked ? data.getInt("dong") + "동 " + data.getInt("ho") + "호" : "미연동 (홈 링커로 세대기와 연동)",
+                left + 70, top + 38, linked ? 0x4CD27A : 0xFFD34E, false);
         g.drawString(font, "방 이름", left + 12, top + 62, 0xC8D0DA, false);
-        g.drawString(font, "같은 동·호의 월패드에서 제어됩니다", left + 12, top + 106, 0x9AA7B8, false);
+        g.drawString(font, "연동된 세대의 월패드에서 제어됩니다", left + 12, top + 106, 0x9AA7B8, false);
         if (kind == ControlKind.ELEVATOR_LINK) {
             g.drawString(font, "엘리베이터 호출 버튼 옆에 설치 (레드스톤)", left + 12, top + 172, 0x707880, false);
         }

@@ -28,7 +28,7 @@ public class DoorGui extends DeviceGui {
         } else {
             for (int r = 0; r < 6; r++) for (int c = 0; c < 8; c++) circle(g, cx - 28 + c * 8, y + 22 + r * 8, 1, 0xFF3A3D42);
         }
-        String who = DeviceLogic.num(data.getInt("dong")) + "동 " + DeviceLogic.num(data.getInt("ho")) + "호";
+        String who = data.getBoolean("linked") ? DeviceLogic.num(data.getInt("dong")) + "동 " + DeviceLogic.num(data.getInt("ho")) + "호" : "미연동";
         centered(g, who, cx, y + 84, cam ? 0xFFFFFF : 0x22252A);
 
         int st = status();
@@ -45,6 +45,6 @@ public class DoorGui extends DeviceGui {
         centered(g, stText, cx, y + 170, data.getBoolean("doorOpen") ? 0x4CD27A : (cam ? 0xFFFFFF : 0x22252A));
         if (active) button(g, x + 20, y + 186, w - 40, 20, "종료", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> act("hangup"));
         centered(g, cam ? "영상 + 음성 송출" : "음성 송출", cx, y + h - 26, 0xFF9AA7B8);
-        button(g, x + w - 18, y + h - 16, 14, 12, "⚙", darken(body, 10), 0xFFFFFFFF, mx, my, this::openSettings);
+        if (!data.getBoolean("linked")) centered(g, "홈 링커로 세대기와 연동하세요", cx, y + h - 40, 0xFFFFD34E);
     }
 }

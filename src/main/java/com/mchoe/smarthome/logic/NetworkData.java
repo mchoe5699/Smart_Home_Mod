@@ -31,6 +31,10 @@ public class NetworkData extends SavedData {
         public final BlockPos pos;
         public DeviceType type;
         public int guard = UNSET, dong = UNSET, ho = UNSET;
+        /** 도어카메라·도어폰: 홈 링커로 세대기와 연동됐는지 */
+        public boolean linked;
+        /** 도어 링커로 연동한 문 */
+        public final List<BlockPos> doors = new ArrayList<>();
 
         Device(BlockPos pos, DeviceType type) {
             this.pos = pos.immutable();
@@ -48,6 +52,8 @@ public class NetworkData extends SavedData {
         public int level = 1;
         /** 난방 설정 온도 */
         public int temp = 22;
+        /** 홈 링커로 세대기와 연동됐는지 */
+        public boolean linked;
         /** 엘리베이터 연동기 신호 남은 틱 (저장 안 함) */
         public int pulse;
 
@@ -123,9 +129,9 @@ public class NetworkData extends SavedData {
         return devices.get(pos);
     }
 
-    public void putDevice(BlockPos pos, DeviceType type, int guard, int dong, int ho) {
+    public void putDevice(BlockPos pos, DeviceType type, int guard, int dong, int ho, boolean linked) {
         Device d = devices.get(pos);
-        if (d != null && d.type == type && d.guard == guard && d.dong == dong && d.ho == ho) return;
+        if (d != null && d.type == type && d.guard == guard && d.dong == dong && d.ho == ho && d.linked == linked) return;
         if (d == null) {
             d = new Device(pos, type);
             devices.put(d.pos, d);
@@ -134,7 +140,23 @@ public class NetworkData extends SavedData {
         d.guard = guard;
         d.dong = dong;
         d.ho = ho;
+        d.linked = linked;
         setDirty();
+    }
+
+    /** 도어 링커: 문 연동을 켜고 끈다. 연동되면 true */
+    public boolean toggleDoor(BlockPos device, BlockPos door) {
+        Device d = devices.get(device);
+        if (d == null) return false;
+        boolean added;
+        if (d.doors.remove(door)) {
+            added = false;
+        } else {
+            d.doors.add(door.immutable());
+            added = true;
+        }
+        setDirty();
+        return added;
     }
 
     public void removeDevice(BlockPos pos) {
@@ -175,7 +197,7 @@ public class NetworkData extends SavedData {
         List<Control> out = new ArrayList<>();
         if (complex < 0 || dong < 0 || ho < 0) return out;
         for (Control c : controls.values()) {
-            if (c.dong == dong && c.ho == ho && complexAt(c.pos) == complex) out.add(c);
+            if (c.linked && c.dong == dong && c.ho == ho && complexAt(c.pos) == complex) out.add(c);
         }
         return out;
     }
@@ -416,6 +438,8 @@ public class NetworkData extends SavedData {
             d.guard = t.getInt("guard");
             d.dong = t.getInt("dong");
             d.ho = t.getInt("ho");
+            d.linked = t.getBoolean("linked");
+            for (long l : t.getLongArray("doors")) d.doors.add(BlockPos.of(l));
             data.devices.put(d.pos, d);
         }
         ListTag cl = tag.getList("controls", Tag.TAG_COMPOUND);
@@ -428,6 +452,7 @@ public class NetworkData extends SavedData {
             c.on = t.getBoolean("on");
             c.level = t.getInt("level");
             c.temp = t.getInt("temp");
+            c.linked = t.getBoolean("linked");
             data.controls.put(c.pos, c);
         }
         ListTag zl = tag.getList("zones", Tag.TAG_COMPOUND);
@@ -480,6 +505,8 @@ public class NetworkData extends SavedData {
             t.putInt("guard", d.guard);
             t.putInt("dong", d.dong);
             t.putInt("ho", d.ho);
+            t.putBoolean("linked", d.linked);
+            t.putLongArray("doors", d.doors.stream().mapToLong(BlockPos::asLong).toArray());
             dl.add(t);
         }
         tag.put("devices", dl);
@@ -494,6 +521,7 @@ public class NetworkData extends SavedData {
             t.putBoolean("on", c.on);
             t.putInt("level", c.level);
             t.putInt("temp", c.temp);
+            t.putBoolean("linked", c.linked);
             cl.add(t);
         }
         tag.put("controls", cl);

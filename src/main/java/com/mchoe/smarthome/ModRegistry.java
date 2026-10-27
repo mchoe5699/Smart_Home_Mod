@@ -8,6 +8,7 @@ import com.mchoe.smarthome.blockentity.ControlBlockEntity;
 import com.mchoe.smarthome.blockentity.DeviceBlockEntity;
 import com.mchoe.smarthome.item.AccessCardItem;
 import com.mchoe.smarthome.item.BlankCardItem;
+import com.mchoe.smarthome.item.LinkerItem;
 import com.mchoe.smarthome.logic.ControlKind;
 import com.mchoe.smarthome.logic.DeviceType;
 import net.minecraft.core.registries.Registries;
@@ -63,6 +64,10 @@ public final class ModRegistry {
             () -> new BlockItem(COMPUTER.get(), new Item.Properties()));
 
     public static final RegistryObject<Item> BLANK_CARD = ITEMS.register("blank_card", () -> new BlankCardItem(new Item.Properties()));
+    public static final RegistryObject<Item> HOME_LINKER = ITEMS.register("home_linker",
+            () -> new LinkerItem(LinkerItem.Mode.HOME, new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> DOOR_LINKER = ITEMS.register("door_linker",
+            () -> new LinkerItem(LinkerItem.Mode.DOOR, new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> ACCESS_CARD = ITEMS.register("access_card", () -> new AccessCardItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<BlockEntityType<DeviceBlockEntity>> DEVICE_BE = BLOCK_ENTITIES.register("device",
@@ -80,6 +85,8 @@ public final class ModRegistry {
                 output.accept(COMPUTER_ITEM.get());
                 for (DeviceType t : DeviceType.values()) output.accept(DEVICE_ITEMS.get(t).get());
                 for (ControlKind k : ControlKind.values()) output.accept(CONTROL_ITEMS.get(k).get());
+                output.accept(HOME_LINKER.get());
+                output.accept(DOOR_LINKER.get());
                 output.accept(BLANK_CARD.get());
             })
             .build());

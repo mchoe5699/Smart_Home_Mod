@@ -33,7 +33,7 @@ public final class HomeLogic {
         return t;
     }
 
-    private static void apply(ServerLevel level, NetworkData data, NetworkData.Control c) {
+    public static void apply(ServerLevel level, NetworkData data, NetworkData.Control c) {
         data.setDirty();
         if (level.isLoaded(c.pos) && level.getBlockEntity(c.pos) instanceof ControlBlockEntity be) be.applyFromRegistry();
     }
@@ -137,6 +137,7 @@ public final class HomeLogic {
         tag.putString("room", c.room);
         tag.putInt("dong", c.dong);
         tag.putInt("ho", c.ho);
+        tag.putBoolean("linked", c.linked);
         int cid = data.complexAt(be.getBlockPos());
         NetworkData.Complex cx = data.getComplex(cid);
         tag.putString("complex", cx == null ? "" : cx.name);
@@ -147,8 +148,6 @@ public final class HomeLogic {
         NetworkData data = NetworkData.get(level);
         NetworkData.Control c = be.control();
         if (action.equals("ctl_settings")) {
-            c.dong = DeviceLogic.clamp(args.getInt("dong"));
-            c.ho = DeviceLogic.clamp(args.getInt("ho"));
             String room = args.getString("room").trim();
             c.room = room.length() > 12 ? room.substring(0, 12) : room;
             apply(level, data, c);

@@ -27,7 +27,10 @@ public class SmartHomeMod {
     }
 
     private void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && ServerLifecycleHooks.getCurrentServer() != null) CallManager.tick(ServerLifecycleHooks.getCurrentServer());
+        if (event.phase == TickEvent.Phase.END && ServerLifecycleHooks.getCurrentServer() != null) {
+            CallManager.tick(ServerLifecycleHooks.getCurrentServer());
+            com.mchoe.smarthome.logic.DoorControl.tick(ServerLifecycleHooks.getCurrentServer());
+        }
     }
 
     private void onChat(ServerChatEvent event) {

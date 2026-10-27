@@ -27,6 +27,8 @@ public class DeviceBlockEntity extends BlockEntity {
     private int guard = NetworkData.UNSET;
     private int dong = NetworkData.UNSET;
     private int ho = NetworkData.UNSET;
+    /** 도어카메라·도어폰: 홈 링커로 연동됨 */
+    private boolean linked;
     private final List<String> log = new ArrayList<>();
     private int doorTicks;
 
@@ -50,6 +52,13 @@ public class DeviceBlockEntity extends BlockEntity {
     public int getGuard() { return guard; }
     public int getDong() { return dong; }
     public int getHo() { return ho; }
+    public boolean isLinked() { return linked; }
+
+    /** 홈 링커: 세대기의 동·호로 연동(또는 해제) */
+    public void setLink(int dong, int ho, boolean linked) {
+        this.linked = linked;
+        setNumbers(guard, dong, ho);
+    }
     public List<String> getLog() { return log; }
     public int getStatus() { return status; }
     public String getPeer() { return peer; }
@@ -86,7 +95,7 @@ public class DeviceBlockEntity extends BlockEntity {
     }
 
     public void syncRegistry() {
-        if (level instanceof ServerLevel sl) NetworkData.get(sl).putDevice(worldPosition, getDeviceType(), guard, dong, ho);
+        if (level instanceof ServerLevel sl) NetworkData.get(sl).putDevice(worldPosition, getDeviceType(), guard, dong, ho, linked);
     }
 
     @Override
@@ -133,6 +142,7 @@ public class DeviceBlockEntity extends BlockEntity {
         tag.putInt("guard", guard);
         tag.putInt("dong", dong);
         tag.putInt("ho", ho);
+        tag.putBoolean("linked", linked);
         tag.putInt("doorTicks", doorTicks);
         ListTag l = new ListTag();
         for (String s : log) l.add(StringTag.valueOf(s));
@@ -146,6 +156,7 @@ public class DeviceBlockEntity extends BlockEntity {
         dong = tag.contains("dong") ? tag.getInt("dong") : NetworkData.UNSET;
         ho = tag.contains("ho") ? tag.getInt("ho") : NetworkData.UNSET;
         doorTicks = tag.getInt("doorTicks");
+        linked = tag.getBoolean("linked");
         if (tag.contains("log")) {
             log.clear();
             ListTag l = tag.getList("log", Tag.TAG_STRING);
