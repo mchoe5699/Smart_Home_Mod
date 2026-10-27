@@ -1,0 +1,107 @@
+{
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/gas_valve_body",
+  "pipe": "smart_home_mod:block/gas_pipe",
+  "handle": "smart_home_mod:block/gas_handle_red",
+  "particle": "smart_home_mod:block/gas_valve_body"
+ },
+ "elements": [
+  {
+   "from": [
+    7,
+    0,
+    13
+   ],
+   "to": [
+    9,
+    16,
+    15
+   ],
+   "faces": {
+    "north": {
+     "texture": "#pipe"
+    },
+    "south": {
+     "texture": "#pipe"
+    },
+    "east": {
+     "texture": "#pipe"
+    },
+    "west": {
+     "texture": "#pipe"
+    },
+    "up": {
+     "texture": "#pipe"
+    },
+    "down": {
+     "texture": "#pipe"
+    }
+   }
+  },
+  {
+   "from": [
+    6.5,
+    6.5,
+    12.5
+   ],
+   "to": [
+    9.5,
+    9.5,
+    15.5
+   ],
+   "faces": {
+    "north": {
+     "texture": "#body"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#body"
+    }
+   }
+  },
+  {
+   "from": [
+    7.5,
+    5,
+    11.5
+   ],
+   "to": [
+    8.5,
+    11,
+    12.5
+   ],
+   "faces": {
+    "north": {
+     "texture": "#handle"
+    },
+    "south": {
+     "texture": "#handle"
+    },
+    "east": {
+     "texture": "#handle"
+    },
+    "west": {
+     "texture": "#handle"
+    },
+    "up": {
+     "texture": "#handle"
+    },
+    "down": {
+     "texture": "#handle"
+    }
+   }
+  }
+ ]
+}

@@ -8,6 +8,11 @@ import com.mchoe.smarthome.logic.DeviceType;
 import com.mchoe.smarthome.logic.NetworkData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import com.mchoe.smarthome.item.AccessCardItem;
+import com.mchoe.smarthome.item.BlankCardItem;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -54,13 +59,13 @@ public class DeviceBlock extends BaseEntityBlock {
 
     private static VoxelShape baseShape(DeviceType type) {
         return switch (type) {
-            case WALLPAD -> box(1, 3.5, 15, 15, 12.5, 16);
-            case VIDEOPHONE -> box(3, 4, 14.5, 13, 12, 16);
-            case INTERPHONE -> box(5, 3, 14, 11, 13, 16);
-            case DOOR_CAMERA -> box(6, 4, 14.5, 10, 12, 16);
-            case DOOR_PHONE -> box(6, 5, 14.5, 10, 11, 16);
-            case LOBBY_PHONE -> box(3, 1, 15, 13, 15, 16);
-            case GUARD_STATION -> Shapes.or(box(1, 0, 2, 15, 2, 14), box(2, 2, 10, 14, 12, 12), box(11, 2, 3, 14, 3.5, 8));
+            case WALLPAD -> box(0.5, 3, 15.25, 15.5, 12.5, 16);
+            case VIDEOPHONE -> box(2, 4, 14.75, 14, 11.5, 16);
+            case INTERPHONE -> box(5, 2.5, 13.6, 11, 13.5, 16);
+            case DOOR_CAMERA -> box(6, 3.5, 14, 10, 12.5, 16);
+            case DOOR_PHONE -> box(5.5, 5, 14.75, 10.5, 11, 16);
+            case LOBBY_PHONE -> box(2.5, 0.5, 13.5, 13.5, 16, 16);
+            case GUARD_STATION -> Shapes.or(box(1, 0, 1, 15, 1.5, 15), box(2, 1.5, 9, 14, 11.5, 11), box(1.5, 1.5, 1.5, 11, 3, 7.5), box(12, 1.5, 2, 14.5, 3.5, 8));
         };
     }
 
@@ -104,6 +109,21 @@ public class DeviceBlock extends BaseEntityBlock {
 
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        ItemStack held = player.getItemInHand(hand);
+        // 출입 카드: 로비폰에 카드를 대면(들고 우클릭) 인증
+        if (type == DeviceType.LOBBY_PHONE && held.getItem() instanceof AccessCardItem) {
+            if (!level.isClientSide && player instanceof ServerPlayer sp && level.getBlockEntity(pos) instanceof DeviceBlockEntity be) {
+                DeviceLogic.tagCard(sp, (ServerLevel) level, be, AccessCardItem.cardId(held));
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (type == DeviceType.LOBBY_PHONE && held.getItem() instanceof BlankCardItem) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(Component.literal("등록되지 않은 카드입니다. 관리 컴퓨터에서 카드를 등록하세요")
+                        .withStyle(ChatFormatting.RED), true);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
             DeviceLogic.openScreen(sp, pos, false);
         }

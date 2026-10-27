@@ -1,0 +1,42 @@
+{
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/elevator_link_body",
+  "front": "smart_home_mod:block/elevator_link_front",
+  "particle": "smart_home_mod:block/elevator_link_body"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    5,
+    14.5
+   ],
+   "to": [
+    11,
+    11,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#front"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#body"
+    }
+   }
+  }
+ ]
+}

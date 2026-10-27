@@ -1,27 +1,27 @@
 {
-  "type": "minecraft:crafting_shaped",
-  "category": "redstone",
-  "pattern": [
-    "IGI",
-    "GRG",
-    "IQI"
-  ],
-  "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "G": {
-      "item": "minecraft:glass_pane"
-    },
-    "R": {
-      "item": "minecraft:redstone"
-    },
-    "Q": {
-      "item": "minecraft:quartz"
-    }
+ "type": "minecraft:crafting_shaped",
+ "category": "redstone",
+ "pattern": [
+  "IGI",
+  "GRG",
+  "IQI"
+ ],
+ "key": {
+  "I": {
+   "item": "minecraft:iron_ingot"
   },
-  "result": {
-    "item": "smart_home_mod:wallpad",
-    "count": 1
+  "G": {
+   "item": "minecraft:glass_pane"
+  },
+  "R": {
+   "item": "minecraft:redstone"
+  },
+  "Q": {
+   "item": "minecraft:quartz"
   }
+ },
+ "result": {
+  "item": "smart_home_mod:wallpad",
+  "count": 1
+ }
 }

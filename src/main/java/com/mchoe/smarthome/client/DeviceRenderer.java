@@ -5,14 +5,17 @@ import com.mchoe.smarthome.blockentity.DeviceBlockEntity;
 import com.mchoe.smarthome.logic.DeviceLogic;
 import com.mchoe.smarthome.logic.DeviceType;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
-/** 기기 앞면 화면(LCD) 표시 */
+/** 기기 앞면 화면(LCD) 표시. 카메라 호출이면 실시간 영상을 띄운다. */
 public class DeviceRenderer implements BlockEntityRenderer<DeviceBlockEntity> {
     private static final int BG_NAVY = 0xFF0B1A2E;
     private static final int BAR_BLUE = 0xFF1E4D8C;
@@ -58,6 +61,11 @@ public class DeviceRenderer implements BlockEntityRenderer<DeviceBlockEntity> {
         p.end();
     }
 
+    private static boolean playerNear(BlockPos pos, double range) {
+        var player = Minecraft.getInstance().player;
+        return player != null && player.distanceToSqr(Vec3.atCenterOf(pos)) < range * range;
+    }
+
     private static String status(int st) {
         return switch (st) {
             case DeviceLogic.STATUS_RINGING -> "호출 수신";
@@ -73,21 +81,32 @@ public class DeviceRenderer implements BlockEntityRenderer<DeviceBlockEntity> {
         float line = 9 * ts;
 
         if (idle && type == DeviceType.VIDEOPHONE) {
-            // 비디오폰은 대기 시 화면이 꺼져 있다
             p.rect(0, 0, w, h, 0xFF050607);
-            p.text(be.getClock(), w - 0.3f, h - line - 0.2f, ts * 0.7f, 0xFF3A4654, false, 0);
+            p.text(be.getClock(), w - 0.3f - font.width(be.getClock()) * ts * 0.7f, h - line - 0.2f, ts * 0.7f, 0xFF3A4654, false, 0);
             return;
         }
-        int bg = BG_NAVY;
-        if (st == DeviceLogic.STATUS_RINGING && blink) bg = 0xFF3A1520;
-        p.rect(0, 0, w, h, bg);
-        // 상단 바
+        p.rect(0, 0, w, h, BG_NAVY);
+
+        // 실시간 영상
+        BlockPos cam = be.getCamPos();
+        if (!idle && cam != null && playerNear(be.getBlockPos(), 16)) {
+            CameraFeed feed = CameraFeed.get(cam, 6);
+            if (feed != null) {
+                p.feed(feed, 0, 0, w, h);
+                float bar = line + 0.4f;
+                p.rect(0, h - bar, w, h, 0xC0000000);
+                int c = st == DeviceLogic.STATUS_CONNECTED ? GREEN : (blink ? YELLOW : WHITE);
+                p.text("● " + status(st) + "  " + be.getPeer(), 0.3f, h - bar + 0.2f, ts, c, false, w - 0.6f);
+                if (blink) p.rect(w - 0.8f, 0.3f, w - 0.3f, 0.8f, RED);
+                return;
+            }
+        }
+
         float bar = line + 0.3f;
         p.rect(0, 0, w, bar, BAR_BLUE);
-        String title = switch (type) {
-            case GUARD_STATION -> "경비실 " + DeviceLogic.num(be.getGuard());
-            default -> DeviceLogic.num(be.getDong()) + "동 " + DeviceLogic.num(be.getHo()) + "호";
-        };
+        String title = type == DeviceType.GUARD_STATION
+                ? "경비실 " + DeviceLogic.num(be.getGuard())
+                : DeviceLogic.num(be.getDong()) + "동 " + DeviceLogic.num(be.getHo()) + "호";
         p.text(title, 0.3f, 0.2f, ts, WHITE, false, w * 0.55f);
         p.text(be.getClock(), w - 0.3f - font.width(be.getClock()) * ts, 0.2f, ts, WHITE, false, 0);
 
@@ -97,15 +116,10 @@ public class DeviceRenderer implements BlockEntityRenderer<DeviceBlockEntity> {
             y += line * 2.4f + 0.4f;
             String cx = be.getComplexName().isEmpty() ? "단지 구획 밖" : be.getComplexName();
             p.text(cx, w / 2f, y, ts, GREY, true, w * 0.9f);
-            y += line + 0.2f;
-            if (type != DeviceType.GUARD_STATION) {
-                p.text("관할경비실 " + DeviceLogic.num(be.getGuard()), w / 2f, y, ts, GREY, true, w * 0.9f);
-            }
-            // 하단 메뉴 타일
             float tileY = h - line * 1.8f - 0.3f;
             String[] menu = type == DeviceType.GUARD_STATION
-                    ? new String[]{"세대호출", "로비호출", "기록"}
-                    : new String[]{"방문자", "경비실", "세대통화", "기록"};
+                    ? new String[]{"세대", "로비", "CCTV", "기록"}
+                    : new String[]{"방문자", "조명", "난방", "가스", "환기", "경비실"};
             float tw = (w - 0.4f) / menu.length;
             for (int i = 0; i < menu.length; i++) {
                 float tx = 0.2f + i * tw;
@@ -114,25 +128,10 @@ public class DeviceRenderer implements BlockEntityRenderer<DeviceBlockEntity> {
             }
             return;
         }
-
         int stColor = st == DeviceLogic.STATUS_CONNECTED ? GREEN : st == DeviceLogic.STATUS_RINGING ? (blink ? YELLOW : RED) : YELLOW;
-        boolean showFace = be.isVideo() && be.getVisitorId() != null && st != DeviceLogic.STATUS_CALLING;
-        float textX = 0.4f;
-        if (showFace) {
-            float size = Math.min(h - bar - 1.2f, w * 0.45f);
-            p.rect(0.3f, y, 0.3f + size + 0.4f, y + size + 0.4f, 0xFF000000);
-            p.face(be.getVisitorId(), 0.5f, y + 0.2f, size);
-            p.text(be.getVisitor(), 0.5f + size / 2f, y + size + 0.6f, ts * 0.8f, GREY, true, size + 0.4f);
-            textX = size + 1.2f;
-        }
-        float tw = w - textX - 0.3f;
-        p.text(status(st), textX, y + 0.2f, ts * 1.4f, stColor, false, tw);
-        p.text(be.getPeer(), textX, y + line * 1.6f + 0.4f, ts, WHITE, false, tw);
-        if (be.isVideo() && st != DeviceLogic.STATUS_CALLING) {
-            p.text("● 영상 수신", textX, y + line * 2.8f + 0.5f, ts * 0.8f, RED, false, tw);
-        } else if (st != DeviceLogic.STATUS_CALLING) {
-            p.text("음성 통화", textX, y + line * 2.8f + 0.5f, ts * 0.8f, GREY, false, tw);
-        }
+        p.text(status(st), w / 2f, y + line, ts * 1.6f, stColor, true, w - 0.6f);
+        p.text(be.getPeer(), w / 2f, y + line * 3f, ts, WHITE, true, w - 0.6f);
+        p.text("음성 통화", w / 2f, y + line * 4.4f, ts * 0.8f, GREY, true, w - 0.6f);
     }
 
     private void drawLobby(ScreenPainter p, DeviceBlockEntity be, float w, float h, float ts, boolean blink, boolean doorOpen) {
@@ -153,9 +152,9 @@ public class DeviceRenderer implements BlockEntityRenderer<DeviceBlockEntity> {
             return;
         }
         if (st == DeviceLogic.STATUS_IDLE) {
-            p.text("호출할 세대 번호를", w / 2f, y, ts, WHITE, true, w - 0.6f);
-            p.text("누른 뒤 호출하세요", w / 2f, y + line + 0.2f, ts, WHITE, true, w - 0.6f);
-            p.text("경비실 호출 가능", w / 2f, h - line - 0.3f, ts * 0.8f, GREY, true, w - 0.6f);
+            p.text("호수를 누르고 [호출]", w / 2f, y, ts, WHITE, true, w - 0.6f);
+            p.text("[열쇠] 비밀번호 · 카드 태그", w / 2f, y + line + 0.3f, ts * 0.85f, GREY, true, w - 0.6f);
+            p.text("[경비실] 경비실 호출", w / 2f, h - line - 0.3f, ts * 0.8f, GREY, true, w - 0.6f);
             return;
         }
         int c = st == DeviceLogic.STATUS_CONNECTED ? GREEN : (blink ? YELLOW : WHITE);

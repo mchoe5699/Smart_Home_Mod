@@ -1,0 +1,27 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "redstone",
+ "pattern": [
+  " I ",
+  "RGR",
+  " Q "
+ ],
+ "key": {
+  "I": {
+   "item": "minecraft:iron_ingot"
+  },
+  "R": {
+   "item": "minecraft:redstone"
+  },
+  "G": {
+   "item": "minecraft:glowstone"
+  },
+  "Q": {
+   "item": "minecraft:quartz"
+  }
+ },
+ "result": {
+  "item": "smart_home_mod:smart_light",
+  "count": 2
+ }
+}

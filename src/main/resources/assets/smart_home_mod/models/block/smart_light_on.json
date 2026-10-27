@@ -1,0 +1,42 @@
+{
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/smart_light_body",
+  "face": "smart_home_mod:block/smart_light_face_on",
+  "particle": "smart_home_mod:block/smart_light_body"
+ },
+ "elements": [
+  {
+   "from": [
+    3,
+    15,
+    3
+   ],
+   "to": [
+    13,
+    16,
+    13
+   ],
+   "faces": {
+    "north": {
+     "texture": "#body"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#face"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,6 @@
+{
+ "parent": "item/generated",
+ "textures": {
+  "layer0": "smart_home_mod:item/access_card"
+ }
+}

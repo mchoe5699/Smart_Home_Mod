@@ -1,0 +1,27 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "redstone",
+ "pattern": [
+  "GGG",
+  "GRG",
+  "IBI"
+ ],
+ "key": {
+  "G": {
+   "item": "minecraft:glass_pane"
+  },
+  "R": {
+   "item": "minecraft:redstone_block"
+  },
+  "I": {
+   "item": "minecraft:iron_ingot"
+  },
+  "B": {
+   "item": "minecraft:stone_button"
+  }
+ },
+ "result": {
+  "item": "smart_home_mod:admin_computer",
+  "count": 1
+ }
+}

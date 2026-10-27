@@ -1,0 +1,42 @@
+{
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/ventilator_body",
+  "face": "smart_home_mod:block/ventilator_face_on",
+  "particle": "smart_home_mod:block/ventilator_body"
+ },
+ "elements": [
+  {
+   "from": [
+    2,
+    15,
+    2
+   ],
+   "to": [
+    14,
+    16,
+    14
+   ],
+   "faces": {
+    "north": {
+     "texture": "#body"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#face"
+    }
+   }
+  }
+ ]
+}

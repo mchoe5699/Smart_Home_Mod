@@ -1,42 +1,42 @@
 {
-  "parent": "block/block",
-  "textures": {
-    "particle": "smart_home_mod:block/videophone_body",
-    "body": "smart_home_mod:block/videophone_body",
-    "front": "smart_home_mod:block/videophone_front"
-  },
-  "elements": [
-    {
-      "from": [
-        3,
-        4,
-        14.5
-      ],
-      "to": [
-        13,
-        12,
-        16
-      ],
-      "faces": {
-        "north": {
-          "texture": "#front"
-        },
-        "south": {
-          "texture": "#body"
-        },
-        "east": {
-          "texture": "#body"
-        },
-        "west": {
-          "texture": "#body"
-        },
-        "up": {
-          "texture": "#body"
-        },
-        "down": {
-          "texture": "#body"
-        }
-      }
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/videophone_body",
+  "front": "smart_home_mod:block/videophone_front",
+  "particle": "smart_home_mod:block/videophone_body"
+ },
+ "elements": [
+  {
+   "from": [
+    2,
+    4,
+    14.75
+   ],
+   "to": [
+    14,
+    11.5,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#front"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#body"
     }
-  ]
+   }
+  }
+ ]
 }

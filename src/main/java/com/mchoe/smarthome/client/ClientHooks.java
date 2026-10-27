@@ -1,9 +1,18 @@
 package com.mchoe.smarthome.client;
 
-import com.mchoe.smarthome.client.screen.DashboardScreen;
+import com.mchoe.smarthome.client.screen.ComputerScreen;
+import com.mchoe.smarthome.client.screen.ControlScreen;
+import com.mchoe.smarthome.client.screen.DashboardMapScreen;
 import com.mchoe.smarthome.client.screen.DataScreen;
-import com.mchoe.smarthome.client.screen.DeviceScreen;
+import com.mchoe.smarthome.client.screen.DoorGui;
+import com.mchoe.smarthome.client.screen.GuardGui;
+import com.mchoe.smarthome.client.screen.InterphoneGui;
+import com.mchoe.smarthome.client.screen.LobbyGui;
+import com.mchoe.smarthome.client.screen.VideophoneGui;
+import com.mchoe.smarthome.client.screen.WallpadGui;
+import com.mchoe.smarthome.logic.DeviceType;
 import com.mchoe.smarthome.network.ActionPacket;
+import com.mchoe.smarthome.network.MapDataPacket;
 import com.mchoe.smarthome.network.ModNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -27,11 +36,24 @@ public final class ClientHooks {
             return;
         }
         if (refreshOnly) return;
-        if ("dashboard".equals(data.getString("kind"))) {
-            mc.setScreen(new DashboardScreen(pos, data));
-        } else {
-            mc.setScreen(new DeviceScreen(pos, data));
-        }
+        Screen next = switch (data.getString("kind")) {
+            case "dashboard" -> new DashboardMapScreen(pos);
+            case "computer" -> new ComputerScreen(pos, data);
+            case "control" -> new ControlScreen(pos, data);
+            default -> switch (DeviceType.byId(data.getString("type"))) {
+                case WALLPAD -> new WallpadGui(pos, data);
+                case VIDEOPHONE -> new VideophoneGui(pos, data);
+                case INTERPHONE -> new InterphoneGui(pos, data);
+                case LOBBY_PHONE -> new LobbyGui(pos, data);
+                case GUARD_STATION -> new GuardGui(pos, data);
+                case DOOR_CAMERA, DOOR_PHONE -> new DoorGui(pos, data);
+            };
+        };
+        mc.setScreen(next);
+    }
+
+    public static void onMapData(MapDataPacket p) {
+        if (Minecraft.getInstance().screen instanceof DashboardMapScreen s) s.applyMap(p);
     }
 
     public static void send(BlockPos pos, String action, CompoundTag args) {

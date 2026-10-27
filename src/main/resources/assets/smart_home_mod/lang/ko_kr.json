@@ -1,11 +1,19 @@
 {
-  "itemGroup.smart_home_mod": "스마트홈",
-  "block.smart_home_mod.wallpad": "월패드",
-  "block.smart_home_mod.videophone": "비디오폰",
-  "block.smart_home_mod.interphone": "인터폰",
-  "block.smart_home_mod.door_camera": "도어카메라",
-  "block.smart_home_mod.door_phone": "도어폰",
-  "block.smart_home_mod.lobby_phone": "로비폰",
-  "block.smart_home_mod.guard_station": "경비실기",
-  "block.smart_home_mod.complex_dashboard": "단지 대시보드"
+ "itemGroup.smart_home_mod": "스마트홈",
+ "block.smart_home_mod.wallpad": "월패드",
+ "block.smart_home_mod.videophone": "비디오폰",
+ "block.smart_home_mod.interphone": "인터폰",
+ "block.smart_home_mod.door_camera": "도어카메라",
+ "block.smart_home_mod.door_phone": "도어폰",
+ "block.smart_home_mod.lobby_phone": "로비폰",
+ "block.smart_home_mod.guard_station": "경비실기",
+ "block.smart_home_mod.complex_dashboard": "단지 대시보드",
+ "block.smart_home_mod.admin_computer": "관리 컴퓨터",
+ "block.smart_home_mod.smart_light": "스마트 조명",
+ "block.smart_home_mod.thermostat": "온도조절기",
+ "block.smart_home_mod.gas_valve": "가스밸브",
+ "block.smart_home_mod.ventilator": "환기장치",
+ "block.smart_home_mod.elevator_link": "엘리베이터 호출 연동기",
+ "item.smart_home_mod.blank_card": "카드등록용 카드",
+ "item.smart_home_mod.access_card": "출입용 카드"
 }

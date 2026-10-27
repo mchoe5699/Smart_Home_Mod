@@ -16,15 +16,14 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /** 서버 전체의 호출/통화 상태 관리 */
 public final class CallManager {
-    public static final int RING_TIMEOUT = 20 * 30;
-    public static final int TALK_TIMEOUT = 20 * 180;
+    public static final int RING_TIMEOUT = 20 * 40;
+    public static final int TALK_TIMEOUT = 20 * 300;
     public static final double VOICE_RANGE = 6.0;
 
     private static final Map<Integer, Call> CALLS = new LinkedHashMap<>();
@@ -41,11 +40,7 @@ public final class CallManager {
         CALLS.clear();
     }
 
-    public static Call get(int id) {
-        return CALLS.get(id);
-    }
-
-    /** 이 기기가 걸었거나 받은(통화 중) 호출을 우선, 없으면 울리고 있는 호출 */
+    /** 이 기기가 걸었거나 받은 호출을 우선, 없으면 울리고 있는 호출 */
     public static Call find(ResourceKey<Level> dim, BlockPos pos) {
         Call ringing = null;
         for (Call c : CALLS.values()) {
@@ -56,7 +51,6 @@ public final class CallManager {
         return ringing;
     }
 
-    /** 이 기기에서 울리고 있는 모든 호출 (경비실기는 여러 건을 동시에 받을 수 있음) */
     public static List<Call> ringingAt(ResourceKey<Level> dim, BlockPos pos) {
         List<Call> out = new ArrayList<>();
         for (Call c : CALLS.values()) {
@@ -65,7 +59,6 @@ public final class CallManager {
         return out;
     }
 
-    /** 걸고 있거나 통화 중인 기기 */
     public static boolean isBusy(ResourceKey<Level> dim, BlockPos pos) {
         for (Call c : CALLS.values()) {
             if (c.dim.equals(dim) && (c.caller.equals(pos) || pos.equals(c.answered))) return true;
@@ -73,10 +66,7 @@ public final class CallManager {
         return false;
     }
 
-    /**
-     * 호출 시작.
-     * @return 실패 사유, 성공이면 null
-     */
+    /** @return 실패 사유, 성공이면 null */
     public static String start(ServerLevel level, BlockPos caller, NetworkData.Device callerDev,
                                List<NetworkData.Device> targets, ServerPlayer player) {
         ResourceKey<Level> dim = level.dimension();
@@ -98,9 +88,8 @@ public final class CallManager {
             c.targets.add(d.pos);
             c.targetLabels.add(DeviceLogic.label(d));
         }
-        if (c.hasVideo() && player != null) {
-            c.visitorId = player.getUUID();
-            c.visitorName = player.getGameProfile().getName();
+        if (player != null && c.hasVideo()) {
+            for (BlockPos t : c.targets) log(level, t, "방문자 - " + c.callerLabel + " (" + player.getGameProfile().getName() + ")");
         }
         CALLS.put(c.id, c);
         level.playSound(null, caller, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.BLOCKS, 0.6f, 1.6f);
@@ -114,7 +103,6 @@ public final class CallManager {
             if (!r.isEmpty()) c = r.get(0);
         }
         if (c == null || c.answered != null || !c.targets.contains(pos)) return "받을 호출이 없습니다";
-        // 이 기기가 다른 통화 중이면 먼저 끊는다
         for (Call other : new ArrayList<>(CALLS.values())) {
             if (other != c && other.dim.equals(c.dim) && (other.caller.equals(pos) || pos.equals(other.answered))) {
                 end(level, other, "다른 호출을 받아 통화를 종료했습니다");
@@ -124,26 +112,22 @@ public final class CallManager {
         c.answered = pos.immutable();
         c.answeredLabel = dev != null ? DeviceLogic.label(dev) : "";
         c.answeredTick = now;
-        // 같은 세대의 다른 기기는 울림을 멈추고 기록을 남긴다
         for (BlockPos t : c.targets) {
-            if (!t.equals(pos)) log(level, t, "응답됨(다른 기기) - " + c.callerLabel);
+            if (!t.equals(pos)) log(level, t, "다른 기기 응답 - " + c.callerLabel);
         }
         log(level, pos, "통화 - " + c.callerLabel);
+        c.addMessage("§a[연결] " + c.answeredLabel + " ↔ " + c.callerLabel);
         level.playSound(null, pos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 0.6f, 1.8f);
-        notifyNear(level, c.caller, Component.literal("[" + c.answeredLabel + "] 연결되었습니다. 근처에서 채팅하면 음성으로 전달됩니다.")
+        notifyNear(level, c.caller, Component.literal("[" + c.answeredLabel + "] 연결되었습니다. 조작화면 또는 채팅으로 대화하세요.")
                 .withStyle(ChatFormatting.GREEN));
         return null;
     }
 
-    /** 통화 종료 또는 호출 거절 */
     public static void hangup(ServerLevel level, BlockPos pos) {
         Call c = find(level.dimension(), pos);
         if (c == null) return;
-        if (c.caller.equals(pos) || pos.equals(c.answered)) {
-            end(level, c, "통화가 종료되었습니다");
-        } else {
-            decline(level, c, pos);
-        }
+        if (c.caller.equals(pos) || pos.equals(c.answered)) end(level, c, "통화가 종료되었습니다");
+        else decline(level, c, pos);
     }
 
     private static void decline(ServerLevel level, Call c, BlockPos pos) {
@@ -182,9 +166,7 @@ public final class CallManager {
 
     public static void tick(MinecraftServer server) {
         now++;
-        Iterator<Call> it = new ArrayList<>(CALLS.values()).iterator();
-        while (it.hasNext()) {
-            Call c = it.next();
+        for (Call c : new ArrayList<>(CALLS.values())) {
             ServerLevel level = server.getLevel(c.dim);
             if (level == null) {
                 CALLS.remove(c.id);
@@ -209,54 +191,42 @@ public final class CallManager {
                     level.playSound(null, c.caller, SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.BLOCKS, 0.3f, 0.8f);
                 }
             } else if (now - c.answeredTick > TALK_TIMEOUT) {
-                end(level, c, "통화 시간(3분)이 끝났습니다");
-                continue;
-            }
-            // 카메라 영상: 카메라 앞에 있는 사람을 갱신
-            if (c.hasVideo() && now % 20 == 0) {
-                Vec3 cam = Vec3.atCenterOf(c.caller);
-                ServerPlayer nearest = null;
-                double best = 16.0;
-                for (ServerPlayer p : level.players()) {
-                    double d = p.distanceToSqr(cam);
-                    if (d < best) {
-                        best = d;
-                        nearest = p;
-                    }
-                }
-                if (nearest != null) {
-                    c.visitorId = nearest.getUUID();
-                    c.visitorName = nearest.getGameProfile().getName();
-                } else {
-                    c.visitorId = null;
-                    c.visitorName = "";
-                }
+                end(level, c, "통화 시간(5분)이 끝났습니다");
             }
         }
     }
 
-    /** 통화 중 채팅을 상대편 기기 근처로 전달 (음성 통화 흉내) */
+    /** 조작화면 대화 입력 */
+    public static String say(ServerLevel level, BlockPos pos, ServerPlayer player, String text) {
+        Call c = find(level.dimension(), pos);
+        if (c == null || c.answered == null || !(c.caller.equals(pos) || pos.equals(c.answered))) return "통화 중이 아닙니다";
+        text = text.trim();
+        if (text.isEmpty()) return null;
+        if (text.length() > 120) text = text.substring(0, 120);
+        boolean fromCaller = c.caller.equals(pos);
+        deliver(level, c, fromCaller, player.getGameProfile().getName(), text);
+        return null;
+    }
+
+    /** 통화 중 기기 근처에서 친 일반 채팅도 대화로 전달 */
     public static void relayChat(ServerPlayer sender, String text) {
         if (!(sender.level() instanceof ServerLevel level)) return;
-        for (Call c : CALLS.values()) {
+        for (Call c : new ArrayList<>(CALLS.values())) {
             if (c.answered == null || !c.dim.equals(level.dimension())) continue;
-            BlockPos from = null, to = null;
-            String fromLabel = null;
-            if (near(sender, c.caller)) {
-                from = c.caller;
-                to = c.answered;
-                fromLabel = c.callerLabel;
-            } else if (near(sender, c.answered)) {
-                from = c.answered;
-                to = c.caller;
-                fromLabel = c.answeredLabel;
-            }
-            if (from == null) continue;
-            Component msg = Component.literal("[통화 " + fromLabel + "] ").withStyle(ChatFormatting.AQUA)
-                    .append(Component.literal(sender.getGameProfile().getName() + ": " + text).withStyle(ChatFormatting.WHITE));
-            for (ServerPlayer p : level.players()) {
-                if (near(p, to) && !near(p, from)) p.sendSystemMessage(msg);
-            }
+            if (near(sender, c.caller)) deliver(level, c, true, sender.getGameProfile().getName(), text);
+            else if (near(sender, c.answered)) deliver(level, c, false, sender.getGameProfile().getName(), text);
+        }
+    }
+
+    private static void deliver(ServerLevel level, Call c, boolean fromCaller, String name, String text) {
+        String label = fromCaller ? c.callerLabel : c.answeredLabel;
+        c.addMessage((fromCaller ? "§b" : "§e") + name + "§7(" + label + ")§f: " + text);
+        BlockPos to = fromCaller ? c.answered : c.caller;
+        BlockPos from = fromCaller ? c.caller : c.answered;
+        Component msg = Component.literal("[통화 " + label + "] ").withStyle(ChatFormatting.AQUA)
+                .append(Component.literal(name + ": " + text).withStyle(ChatFormatting.WHITE));
+        for (ServerPlayer p : level.players()) {
+            if (near(p, to) && !near(p, from)) p.sendSystemMessage(msg);
         }
     }
 
@@ -270,7 +240,7 @@ public final class CallManager {
         }
     }
 
-    private static void log(ServerLevel level, BlockPos pos, String text) {
+    static void log(ServerLevel level, BlockPos pos, String text) {
         if (!level.isLoaded(pos)) return;
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof DeviceBlockEntity d) d.addLog(DeviceLogic.timeString(level) + " " + text);

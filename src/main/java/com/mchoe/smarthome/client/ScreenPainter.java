@@ -58,6 +58,20 @@ public class ScreenPainter {
         quad(WHITE, x1, y1, x2, y2, 0, 0, 1, 1, argb);
     }
 
+    public void texture(ResourceLocation tex, float x1, float y1, float x2, float y2) {
+        quad(tex, x1, y1, x2, y2, 0, 0, 1, 1, 0xFFFFFFFF);
+    }
+
+    /** 카메라 영상 + 얼굴 표시 */
+    public void feed(CameraFeed f, float x1, float y1, float x2, float y2) {
+        texture(f.loc, x1, y1, x2, y2);
+        float w = x2 - x1, h = y2 - y1;
+        for (CameraFeed.Mark m : f.marks) {
+            float s = m.size() * h;
+            face(m.id(), x1 + m.u() * w - s / 2, y1 + m.v() * h - s / 2, s);
+        }
+    }
+
     private void quad(ResourceLocation tex, float x1, float y1, float x2, float y2,
                       float u1, float v1, float u2, float v2, int argb) {
         float z = nextLayer();

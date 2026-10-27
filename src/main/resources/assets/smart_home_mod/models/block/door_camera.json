@@ -1,74 +1,74 @@
 {
-  "parent": "block/block",
-  "textures": {
-    "particle": "smart_home_mod:block/door_camera_body",
-    "body": "smart_home_mod:block/door_camera_body",
-    "front": "smart_home_mod:block/door_camera_front"
-  },
-  "elements": [
-    {
-      "from": [
-        6,
-        4,
-        14.5
-      ],
-      "to": [
-        10,
-        12,
-        16
-      ],
-      "faces": {
-        "north": {
-          "texture": "#front"
-        },
-        "south": {
-          "texture": "#body"
-        },
-        "east": {
-          "texture": "#body"
-        },
-        "west": {
-          "texture": "#body"
-        },
-        "up": {
-          "texture": "#body"
-        },
-        "down": {
-          "texture": "#body"
-        }
-      }
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/door_camera_body",
+  "front": "smart_home_mod:block/door_camera_front",
+  "particle": "smart_home_mod:block/door_camera_body"
+ },
+ "elements": [
+  {
+   "from": [
+    6,
+    3.5,
+    14.75
+   ],
+   "to": [
+    10,
+    12.5,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#front"
     },
-    {
-      "from": [
-        6.5,
-        11.2,
-        13.8
-      ],
-      "to": [
-        9.5,
-        11.9,
-        14.5
-      ],
-      "faces": {
-        "north": {
-          "texture": "#body"
-        },
-        "south": {
-          "texture": "#body"
-        },
-        "east": {
-          "texture": "#body"
-        },
-        "west": {
-          "texture": "#body"
-        },
-        "up": {
-          "texture": "#body"
-        },
-        "down": {
-          "texture": "#body"
-        }
-      }
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#body"
     }
-  ]
+   }
+  },
+  {
+   "from": [
+    6.3,
+    11.8,
+    14
+   ],
+   "to": [
+    9.7,
+    12.4,
+    14.75
+   ],
+   "faces": {
+    "north": {
+     "texture": "#body"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#body"
+    }
+   }
+  }
+ ]
 }

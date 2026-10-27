@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "redstone",
+ "pattern": [
+  "GIG",
+  "GRG",
+  "GIG"
+ ],
+ "key": {
+  "G": {
+   "item": "minecraft:gold_ingot"
+  },
+  "I": {
+   "item": "minecraft:iron_ingot"
+  },
+  "R": {
+   "item": "minecraft:redstone"
+  }
+ },
+ "result": {
+  "item": "smart_home_mod:gas_valve",
+  "count": 1
+ }
+}

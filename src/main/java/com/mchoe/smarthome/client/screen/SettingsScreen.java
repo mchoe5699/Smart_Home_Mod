@@ -15,17 +15,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 번호 설정 화면.
+ * 번호 설정 화면 (모든 번호 0~9999).
  * 세대기(월패드·비디오폰·인터폰): 관할경비실 + 동 + 호
  * 로비폰: 관할경비실 + 동 + 로비번호 (동 9999 = 단지 외곽 로비폰)
- * 경비실기: 경비실번호
- * 도어카메라·도어폰: 동 + 호
- * 각 번호는 0~9999.
+ * 경비실기: 경비실번호 · 도어카메라·도어폰: 동 + 호
  */
 public class SettingsScreen extends Screen implements DataScreen {
     private static final int W = 260;
 
-    private final DeviceScreen parent;
+    private final DeviceGui parent;
     private final DeviceType type;
     private final List<Row> rows = new ArrayList<>();
     private String error = "";
@@ -33,7 +31,7 @@ public class SettingsScreen extends Screen implements DataScreen {
 
     private record Row(String key, String label, EditBox box) {}
 
-    public SettingsScreen(DeviceScreen parent) {
+    public SettingsScreen(DeviceGui parent) {
         super(Component.literal("설정"));
         this.parent = parent;
         this.type = parent.getType();
@@ -60,7 +58,6 @@ public class SettingsScreen extends Screen implements DataScreen {
 
     @Override
     protected void init() {
-        // 입력 중인 값 보존
         List<String> keep = new ArrayList<>();
         for (Row r : rows) keep.add(r.box.getValue());
         rows.clear();
@@ -93,9 +90,7 @@ public class SettingsScreen extends Screen implements DataScreen {
             EditBox box = new EditBox(font, left + W - 90, top + 34 + i * 26, 78, 18, Component.literal(spec.get(i)[1]));
             box.setMaxLength(4);
             box.setFilter(s -> s.matches("\\d{0,4}"));
-            String init;
-            if (i < keep.size()) init = keep.get(i);
-            else init = d.getInt(key) >= 0 ? String.valueOf(d.getInt(key)) : "";
+            String init = i < keep.size() ? keep.get(i) : (d.getInt(key) >= 0 ? String.valueOf(d.getInt(key)) : "");
             box.setValue(init);
             box.setHint(Component.literal("0~9999").withStyle(ChatFormatting.DARK_GRAY));
             addRenderableWidget(box);

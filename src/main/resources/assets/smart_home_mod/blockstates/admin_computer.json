@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "smart_home_mod:block/admin_computer"
+  },
+  "facing=east": {
+   "model": "smart_home_mod:block/admin_computer",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "smart_home_mod:block/admin_computer",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "smart_home_mod:block/admin_computer",
+   "y": 270
+  }
+ }
+}

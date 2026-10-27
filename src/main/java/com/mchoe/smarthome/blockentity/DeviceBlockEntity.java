@@ -20,10 +20,9 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class DeviceBlockEntity extends BlockEntity {
-    private static final int MAX_LOG = 10;
+    private static final int MAX_LOG = 12;
 
     private int guard = NetworkData.UNSET;
     private int dong = NetworkData.UNSET;
@@ -31,12 +30,10 @@ public class DeviceBlockEntity extends BlockEntity {
     private final List<String> log = new ArrayList<>();
     private int doorTicks;
 
-    // ---- 화면 표시용 (서버에서 계산 → 클라이언트 동기화)
+    // ---- 화면 표시용 (서버 계산 → 클라이언트 동기화)
     private int status;
     private String peer = "";
-    private boolean video;
-    private String visitor = "";
-    private UUID visitorId;
+    private long camPos = Long.MIN_VALUE;
     private String complexName = "";
     private String clock = "";
 
@@ -56,18 +53,25 @@ public class DeviceBlockEntity extends BlockEntity {
     public List<String> getLog() { return log; }
     public int getStatus() { return status; }
     public String getPeer() { return peer; }
-    public boolean isVideo() { return video; }
-    public String getVisitor() { return visitor; }
-    public UUID getVisitorId() { return visitorId; }
     public String getComplexName() { return complexName; }
     public String getClock() { return clock; }
+
+    /** 영상을 보내는 카메라 위치 (없으면 null) */
+    public BlockPos getCamPos() {
+        return camPos == Long.MIN_VALUE ? null : BlockPos.of(camPos);
+    }
+
+    public boolean isDoorOpen() {
+        return getBlockState().hasProperty(DeviceBlock.POWERED) && getBlockState().getValue(DeviceBlock.POWERED);
+    }
 
     public void setNumbers(int guard, int dong, int ho) {
         this.guard = guard;
         this.dong = dong;
         this.ho = ho;
         syncRegistry();
-        changed();
+        setChanged();
+        if (level != null && !level.isClientSide) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
     public void addLog(String line) {
@@ -82,16 +86,7 @@ public class DeviceBlockEntity extends BlockEntity {
     }
 
     public void syncRegistry() {
-        if (level instanceof ServerLevel sl) {
-            NetworkData.get(sl).putDevice(worldPosition, getDeviceType(), guard, dong, ho);
-        }
-    }
-
-    private void changed() {
-        setChanged();
-        if (level != null && !level.isClientSide) {
-            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-        }
+        if (level instanceof ServerLevel sl) NetworkData.get(sl).putDevice(worldPosition, getDeviceType(), guard, dong, ho);
     }
 
     @Override
@@ -104,29 +99,26 @@ public class DeviceBlockEntity extends BlockEntity {
         if (!(level instanceof ServerLevel sl)) return;
         be.tickCounter++;
         if (be.doorTicks > 0 && --be.doorTicks == 0 && state.getBlock() instanceof DeviceBlock b) {
-            b.setPowered(level, pos, state, false);
+            b.setPowered(level, pos, level.getBlockState(pos), false);
         }
         if (be.tickCounter % 100 == 1) be.syncRegistry();
         if (be.tickCounter % 10 != 0) return;
 
         CompoundTag t = new CompoundTag();
         DeviceLogic.writeStatus(sl, pos, t);
-        NetworkData.Complex cx = NetworkData.get(sl).complexAt(pos);
+        NetworkData data = NetworkData.get(sl);
+        NetworkData.Complex cx = data.getComplex(data.complexAt(pos));
         String cname = cx == null ? "" : cx.name;
         String clk = DeviceLogic.timeString(sl);
         clk = clk.substring(clk.indexOf(' ') + 1);
-        UUID vid = t.hasUUID("visitorId") ? t.getUUID("visitorId") : null;
+        long cam = t.contains("camPos") ? t.getLong("camPos") : Long.MIN_VALUE;
 
         boolean dirty = be.status != t.getInt("status") || !be.peer.equals(t.getString("peer"))
-                || be.video != t.getBoolean("video") || !be.visitor.equals(t.getString("visitor"))
-                || !java.util.Objects.equals(be.visitorId, vid) || !be.complexName.equals(cname)
-                || !be.clock.equals(clk);
+                || be.camPos != cam || !be.complexName.equals(cname) || !be.clock.equals(clk);
         if (dirty) {
             be.status = t.getInt("status");
             be.peer = t.getString("peer");
-            be.video = t.getBoolean("video");
-            be.visitor = t.getString("visitor");
-            be.visitorId = vid;
+            be.camPos = cam;
             be.complexName = cname;
             be.clock = clk;
             level.sendBlockUpdated(pos, state, state, 3);
@@ -154,15 +146,15 @@ public class DeviceBlockEntity extends BlockEntity {
         dong = tag.contains("dong") ? tag.getInt("dong") : NetworkData.UNSET;
         ho = tag.contains("ho") ? tag.getInt("ho") : NetworkData.UNSET;
         doorTicks = tag.getInt("doorTicks");
-        log.clear();
-        ListTag l = tag.getList("log", Tag.TAG_STRING);
-        for (int i = 0; i < l.size(); i++) log.add(l.getString(i));
+        if (tag.contains("log")) {
+            log.clear();
+            ListTag l = tag.getList("log", Tag.TAG_STRING);
+            for (int i = 0; i < l.size(); i++) log.add(l.getString(i));
+        }
         if (tag.contains("status")) {
             status = tag.getInt("status");
             peer = tag.getString("peer");
-            video = tag.getBoolean("video");
-            visitor = tag.getString("visitor");
-            visitorId = tag.hasUUID("visitorId") ? tag.getUUID("visitorId") : null;
+            camPos = tag.contains("camPos") ? tag.getLong("camPos") : Long.MIN_VALUE;
             complexName = tag.getString("complexName");
             clock = tag.getString("clock");
         }
@@ -176,9 +168,7 @@ public class DeviceBlockEntity extends BlockEntity {
         tag.putInt("ho", ho);
         tag.putInt("status", status);
         tag.putString("peer", peer);
-        tag.putBoolean("video", video);
-        tag.putString("visitor", visitor);
-        if (visitorId != null) tag.putUUID("visitorId", visitorId);
+        if (camPos != Long.MIN_VALUE) tag.putLong("camPos", camPos);
         tag.putString("complexName", complexName);
         tag.putString("clock", clock);
         return tag;

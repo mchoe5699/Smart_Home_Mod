@@ -1,42 +1,42 @@
 {
-  "parent": "block/block",
-  "textures": {
-    "particle": "smart_home_mod:block/complex_dashboard_body",
-    "body": "smart_home_mod:block/complex_dashboard_body",
-    "front": "smart_home_mod:block/complex_dashboard_front"
-  },
-  "elements": [
-    {
-      "from": [
-        1,
-        2,
-        15
-      ],
-      "to": [
-        15,
-        14,
-        16
-      ],
-      "faces": {
-        "north": {
-          "texture": "#front"
-        },
-        "south": {
-          "texture": "#body"
-        },
-        "east": {
-          "texture": "#body"
-        },
-        "west": {
-          "texture": "#body"
-        },
-        "up": {
-          "texture": "#body"
-        },
-        "down": {
-          "texture": "#body"
-        }
-      }
+ "parent": "block/block",
+ "textures": {
+  "body": "smart_home_mod:block/complex_dashboard_body",
+  "front": "smart_home_mod:block/complex_dashboard_front",
+  "particle": "smart_home_mod:block/complex_dashboard_body"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    1,
+    15.25
+   ],
+   "to": [
+    16,
+    15,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#front"
+    },
+    "south": {
+     "texture": "#body"
+    },
+    "east": {
+     "texture": "#body"
+    },
+    "west": {
+     "texture": "#body"
+    },
+    "up": {
+     "texture": "#body"
+    },
+    "down": {
+     "texture": "#body"
     }
-  ]
+   }
+  }
+ ]
 }

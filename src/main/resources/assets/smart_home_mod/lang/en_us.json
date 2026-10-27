@@ -1,11 +1,19 @@
 {
-  "itemGroup.smart_home_mod": "Smart Home",
-  "block.smart_home_mod.wallpad": "Wallpad",
-  "block.smart_home_mod.videophone": "Video Phone",
-  "block.smart_home_mod.interphone": "Interphone",
-  "block.smart_home_mod.door_camera": "Door Camera",
-  "block.smart_home_mod.door_phone": "Door Phone",
-  "block.smart_home_mod.lobby_phone": "Lobby Phone",
-  "block.smart_home_mod.guard_station": "Guard Station",
-  "block.smart_home_mod.complex_dashboard": "Complex Dashboard"
+ "itemGroup.smart_home_mod": "Smart Home",
+ "block.smart_home_mod.wallpad": "Wallpad",
+ "block.smart_home_mod.videophone": "Video Phone",
+ "block.smart_home_mod.interphone": "Interphone",
+ "block.smart_home_mod.door_camera": "Door Camera",
+ "block.smart_home_mod.door_phone": "Door Phone",
+ "block.smart_home_mod.lobby_phone": "Lobby Phone",
+ "block.smart_home_mod.guard_station": "Guard Station",
+ "block.smart_home_mod.complex_dashboard": "Complex Dashboard",
+ "block.smart_home_mod.admin_computer": "Management Computer",
+ "block.smart_home_mod.smart_light": "Smart Light",
+ "block.smart_home_mod.thermostat": "Thermostat",
+ "block.smart_home_mod.gas_valve": "Gas Valve",
+ "block.smart_home_mod.ventilator": "Ventilator",
+ "block.smart_home_mod.elevator_link": "Elevator Call Link",
+ "item.smart_home_mod.blank_card": "Blank Card (for registration)",
+ "item.smart_home_mod.access_card": "Access Card"
 }
