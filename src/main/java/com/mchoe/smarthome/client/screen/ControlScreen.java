@@ -47,6 +47,7 @@ public class ControlScreen extends Screen implements DataScreen {
             case THERMOSTAT -> on ? "난방 켜짐 " + data.getInt("temp") + "℃" : "난방 꺼짐";
             case VENTILATION -> on ? data.getInt("level") + "단 가동 (정지)" : "정지 (가동)";
             case ELEVATOR_LINK -> "호출 신호 보내기";
+            case MOTION_OUTDOOR, MOTION_INDOOR -> on ? "감지 중 (외출/방범모드)" : "대기 (외출/방범모드에서 작동)";
         };
     }
 

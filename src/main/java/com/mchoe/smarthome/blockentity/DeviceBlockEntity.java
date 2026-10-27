@@ -140,6 +140,9 @@ public class DeviceBlockEntity extends BlockEntity {
             b.setPowered(level, pos, level.getBlockState(pos), false);
         }
         if (be.tickCounter % 100 == 1) be.syncRegistry();
+        if (be.tickCounter % 40 == 5 && be.getDeviceType() == DeviceType.GUARD_STATION) {
+            com.mchoe.smarthome.logic.SecurityLogic.guardTick(sl, be);
+        }
         if (be.tickCounter % 10 != 0) return;
 
         CompoundTag t = new CompoundTag();

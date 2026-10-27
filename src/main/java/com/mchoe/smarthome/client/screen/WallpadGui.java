@@ -61,6 +61,10 @@ public class WallpadGui extends DeviceGui {
 
     @Override
     protected void onKey(char c) {
+        if (page == Page.AWAY) {
+            securityKey(c);
+            return;
+        }
         if (page != Page.INTERCOM) return;
         if (c == '<') {
             if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
@@ -176,7 +180,9 @@ public class WallpadGui extends DeviceGui {
         statusLine(g, x + 14, sy + 14, I_GAS, "가스", count(ControlKind.GAS_VALVE, true) > 0 ? "열림" : "잠김",
                 count(ControlKind.GAS_VALVE, true) > 0 ? 0xFF6B6B : 0x4CD27A);
         statusLine(g, x + 14, sy + 28, I_FAN, "환기", count(ControlKind.VENTILATION, true) > 0 ? "가동" : "정지", 0x4CD2C8);
-        statusLine(g, x + 14, sy + 42, I_AWAY, "외출", data.getBoolean("away") ? "설정" : "해제", 0xFFB45A);
+        int sm = data.getInt("secMode");
+        statusLine(g, x + 14, sy + 42, I_AWAY, "방범", sm == 0 ? "해제" : data.getBoolean("secAlarm") ? "경보!" : sm == 1 ? "외출" : "방범",
+                data.getBoolean("secAlarm") ? 0xFF4C4C : 0xFFB45A);
         String notice = data.getString("notice");
         if (!notice.isEmpty()) {
             card(g, x + 10, y + h - 30, pw - 8, 18, 0x40FF8AC8);
@@ -257,7 +263,7 @@ public class WallpadGui extends DeviceGui {
             case HEAT -> count(ControlKind.THERMOSTAT, false) + "개 방";
             case GAS -> count(ControlKind.GAS_VALVE, true) > 0 ? "열림" : "잠김";
             case VENT -> count(ControlKind.VENTILATION, true) > 0 ? "가동" : "정지";
-            case AWAY -> data.getBoolean("away") ? "설정" : "해제";
+            case AWAY -> data.getInt("secMode") == 0 ? "해제" : data.getBoolean("secAlarm") ? "경보!" : data.getInt("secMode") == 1 ? "외출" : "방범";
             case NOTICE -> data.getString("notice").isEmpty() ? "" : "새 공지";
             case VISITOR -> data.contains("doorCam") ? "현관 영상" : "";
             default -> "";
@@ -384,14 +390,8 @@ public class WallpadGui extends DeviceGui {
     }
 
     private void drawAway(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
-        boolean away = data.getBoolean("away");
-        centered(g, away ? "외출모드 설정됨" : "외출모드 해제됨", x + w / 2, y + 26, away ? 0xFFD34E : 0x4CD27A);
-        buttonIcon(g, x + w / 2 - 80, y + 50, 160, 50, I_AWAY, away ? "외출 해제" : "외출 설정", away ? 0xFF4C5866 : 0xFFC98A2E, 0xFFFFFFFF, mx, my, () -> {
-            CompoundTag t = new CompoundTag();
-            t.putBoolean("on", !away);
-            act("away", t);
-        });
-        centered(g, "설정하면 조명 일괄 소등, 가스밸브 잠금, 환기 정지", x + w / 2, y + 116, 0x9AA7B8);
+        card(g, x + 6, y + 4, w - 12, h - 10, 0x28000000);
+        securityPanel(g, x + 10, y + 8, w - 20, h - 18, mx, my);
     }
 
     private void drawGuard(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {

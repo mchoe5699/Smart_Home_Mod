@@ -472,6 +472,74 @@ public abstract class DeviceGui extends Screen implements DataScreen {
         act(action, t);
     }
 
+    // ------------------------------------------------------------------ 외출/방범 (세대 내부기기 공용)
+
+    protected String secInput = "";
+
+    /** 외출/방범 화면의 키 입력 (해제용 세대 비밀번호) */
+    protected void securityKey(char c) {
+        if (data.getInt("secMode") == 0) return;
+        if (c == '<') {
+            if (!secInput.isEmpty()) secInput = secInput.substring(0, secInput.length() - 1);
+        } else if (c == '\n' || c == '#') {
+            disarm();
+        } else if (c >= '0' && c <= '9' && secInput.length() < 8) {
+            secInput += c;
+        }
+    }
+
+    protected void arm(int mode) {
+        CompoundTag t = new CompoundTag();
+        t.putInt("mode", mode);
+        act("secure_on", t);
+    }
+
+    protected void disarm() {
+        CompoundTag t = new CompoundTag();
+        t.putString("pw", secInput);
+        act("secure_off", t);
+        secInput = "";
+    }
+
+    /** 외출/방범 상태 + 설정 버튼 / 해제 키패드 */
+    protected void securityPanel(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
+        int mode = data.getInt("secMode");
+        int remain = data.getInt("secRemain");
+        boolean alarm = data.getBoolean("secAlarm");
+        boolean blink = (ticks / 8) % 2 == 0;
+        int color = mode == 0 ? 0x4CD27A : alarm ? (blink ? 0xFF4C4C : 0xFFFFFF) : remain > 0 ? 0xFFD34E : 0xFF8A4E;
+        icon(g, I_AWAY, x + 4, y + 2, 16, color);
+        String title = mode == 0 ? "외출/방범 해제 상태" : (mode == 1 ? "외출모드" : "방범모드") + (alarm ? " · 경보 발생!" : remain > 0 ? " · 유예 중" : " · 동체 감지 중");
+        g.drawString(font, title, x + 24, y + 6, color, false);
+        String sub = mode == 0 ? "동체감지기 " + data.getInt("motionCount") + "대 연동"
+                : remain > 0 ? "감지 시작까지 " + remain + "초 — 집을 나가세요" : "감지되면 경비실에 통보됩니다";
+        g.drawString(font, font.plainSubstrByWidth(sub, w - 8), x + 4, y + 22, 0x9AA7B8, false);
+        if (mode == 0) {
+            int bw = (w - 14) / 2, by = y + 40, bh = Math.min(44, h - 80);
+            buttonIcon(g, x + 4, by, bw, bh, I_AWAY, "외출 설정", 0xFFC98A2E, 0xFFFFFF, mx, my, () -> arm(1));
+            buttonIcon(g, x + 10 + bw, by, bw, bh, I_GUARD, "방범 설정", 0xFF2E6DB4, 0xFFFFFF, mx, my, () -> arm(2));
+            int ty = by + bh + 8;
+            g.drawString(font, font.plainSubstrByWidth("외출: 실내·외부 감지 + 조명/가스/환기 끔", w - 8), x + 4, ty, 0x9AA7B8, false);
+            g.drawString(font, font.plainSubstrByWidth("방범: 외부 감지기만 (집 안은 감지 안 함)", w - 8), x + 4, ty + 11, 0x9AA7B8, false);
+            g.drawString(font, font.plainSubstrByWidth("설정 후 90초 뒤 감지 시작 · 해제는 세대 비밀번호", w - 8), x + 4, ty + 22, 0x707880, false);
+            return;
+        }
+        int ky = y + 38;
+        int kw = Math.min(34, (w / 2 - 12) / 3), kh = Math.min(22, (h - 44) / 4 - 3);
+        for (int i = 0; i < 12; i++) {
+            String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "←", "0", "#"};
+            char ch = i == 9 ? '<' : keys[i].charAt(0);
+            button(g, x + 4 + (i % 3) * (kw + 3), ky + (i / 3) * (kh + 3), kw, kh, keys[i], 0xFF1E3A5A, 0xFFFFFFFF, mx, my, () -> securityKey(ch));
+        }
+        int rx = x + 4 + 3 * (kw + 3) + 8, rw = x + w - rx - 4;
+        g.drawString(font, "세대 비밀번호", rx, ky, 0xFFFFFF, false);
+        rrect(g, rx, ky + 12, rw, 18, 0xFF050607);
+        String masked = secInput.replaceAll(".", "●");
+        g.drawString(font, masked.isEmpty() ? "_" : masked, rx + 4, ky + 17, 0xFFFFFF, false);
+        buttonIcon(g, rx, ky + 36, rw, 26, I_KEY, "해제", 0xFF2E9E4F, 0xFFFFFF, mx, my, this::disarm);
+        if (!data.getBoolean("hasHouseholdPw")) g.drawString(font, font.plainSubstrByWidth("세대 비밀번호 없음: 바로 해제", rw), rx, ky + 68, 0xFFD34E, false);
+    }
+
     /** 3x4 키패드 그리기 */
     protected void keypad(GuiGraphics g, int x, int y, int kw, int kh, int gap, int color, int text, int mx, int my) {
         String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"};

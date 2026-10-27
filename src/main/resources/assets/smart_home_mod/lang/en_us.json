@@ -19,5 +19,7 @@
  "item.smart_home_mod.home_linker": "Home Linker",
  "item.smart_home_mod.door_linker": "Door Linker",
  "block.smart_home_mod.interphone_basic": "Interphone (Basic)",
- "block.smart_home_mod.videophone_basic": "Video Phone (Basic)"
+ "block.smart_home_mod.videophone_basic": "Video Phone (Basic)",
+ "block.smart_home_mod.motion_sensor_outdoor": "Outdoor Motion Sensor",
+ "block.smart_home_mod.motion_sensor_indoor": "Indoor Motion Sensor"
 }

@@ -41,6 +41,7 @@ public final class HomeLogic {
     private static void change(ServerLevel level, NetworkData data, NetworkData.Control c, String action, CompoundTag args) {
         switch (action) {
             case "ctl_toggle" -> {
+                if (c.kind.isMotion()) return; // 동체감지기는 외출/방범모드로만 동작
                 if (c.kind == ControlKind.ELEVATOR_LINK) c.pulse = 20;
                 else c.on = !c.on;
             }
@@ -101,19 +102,15 @@ public final class HomeLogic {
                 level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 0.5f, 1.5f);
                 DeviceLogic.msg(player, "엘리베이터를 호출했습니다", ChatFormatting.AQUA);
             }
+            case "secure_on" -> {
+                return SecurityLogic.arm(player, level, data, cid, dong, ho, args.getInt("mode"));
+            }
+            case "secure_off" -> {
+                return SecurityLogic.disarm(player, level, dev.getBlockPos(), data, cid, dong, ho, args.getString("pw"));
+            }
             case "away" -> {
-                boolean away = args.getBoolean("on");
-                data.setAway(cid, dong, ho, away);
-                if (away) {
-                    for (NetworkData.Control c : data.controlsOf(cid, dong, ho)) {
-                        if ((c.kind == ControlKind.LIGHT || c.kind == ControlKind.GAS_VALVE || c.kind == ControlKind.VENTILATION) && c.on) {
-                            c.on = false;
-                            if (c.kind == ControlKind.VENTILATION) c.level = 0;
-                            apply(level, data, c);
-                        }
-                    }
-                }
-                DeviceLogic.msg(player, away ? "외출모드 설정: 조명 소등, 가스 잠금, 환기 정지" : "외출모드 해제", ChatFormatting.AQUA);
+                return args.getBoolean("on") ? SecurityLogic.arm(player, level, data, cid, dong, ho, 1)
+                        : SecurityLogic.disarm(player, level, dev.getBlockPos(), data, cid, dong, ho, args.getString("pw"));
             }
             case "set_pw" -> {
                 String pw = args.getString("pw").trim();

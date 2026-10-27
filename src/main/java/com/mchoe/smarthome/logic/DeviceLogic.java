@@ -205,6 +205,8 @@ public final class DeviceLogic {
                 tag.putBoolean("hasPw", !data.householdPassword(cid, d.getDong(), d.getHo()).isEmpty());
             }
             if (type == DeviceType.WALLPAD) HomeLogic.writeHousehold(level, data, cid, d.getDong(), d.getHo(), tag);
+            if (type.internal) SecurityLogic.write(level, data, cid, d.getDong(), d.getHo(), tag);
+            if (type == DeviceType.GUARD_STATION) SecurityLogic.writeAlerts(data, cid, tag);
             if (type == DeviceType.LOBBY_PHONE) {
                 int scope = d.getDong() == OUTER_LOBBY_DONG ? NetworkData.UNSET : d.getDong();
                 tag.putBoolean("commonSet", !cx.commonPassword.isEmpty());
@@ -256,6 +258,13 @@ public final class DeviceLogic {
                 yield "관리 비밀번호가 틀립니다";
             }
             case "guard_away" -> guardAway(dev, args);
+            case "alert_ack" -> {
+                NetworkData nd = NetworkData.get(level);
+                int acid = nd.complexAt(pos);
+                if (args.getInt("id") > 0) nd.removeAlert(args.getInt("id"));
+                else for (NetworkData.Alert al : nd.alertsOf(acid)) nd.removeAlert(al.id);
+                yield null;
+            }
             case "exchange" -> exchange(level, player, dev, args.getInt("dong"), args.getInt("ho"));
             case "exchange_cancel" -> {
                 CallManager.cancelExchange(level, pos, "교환을 취소했습니다");

@@ -115,6 +115,30 @@ public class NetworkData extends SavedData {
     private final Map<Integer, Complex> complexes = new LinkedHashMap<>();
     private final Map<String, String> householdPasswords = new HashMap<>();
     private final Set<String> awayHouseholds = new HashSet<>();
+
+    /** 세대 방범 상태: mode 0 해제 · 1 외출 · 2 방범(재택). armAt 이후 동체 감지 시작 */
+    public static final class Security {
+        public int mode;
+        public long armAt;
+        public boolean alarm;
+        public long lastAlert;
+    }
+
+    /** 경비실 방범 경보 */
+    public static final class Alert {
+        public final int id;
+        public int complex;
+        public String text = "";
+        public String time = "";
+
+        Alert(int id) {
+            this.id = id;
+        }
+    }
+
+    private final Map<String, Security> security = new HashMap<>();
+    private final List<Alert> alerts = new ArrayList<>();
+    private int nextAlert = 1;
     private final Map<Integer, Card> cards = new LinkedHashMap<>();
     private int nextZone = 1, nextComplex = 1, nextCard = 1;
 
@@ -218,7 +242,39 @@ public class NetworkData extends SavedData {
     }
 
     public boolean isAway(int complex, int dong, int ho) {
-        return awayHouseholds.contains(householdKey(complex, dong, ho));
+        Security s = security.get(householdKey(complex, dong, ho));
+        return s != null && s.mode == 1;
+    }
+
+    /** 세대 방범 상태 (없으면 null) */
+    public Security security(int complex, int dong, int ho) {
+        return security.get(householdKey(complex, dong, ho));
+    }
+
+    public Security securityOrCreate(int complex, int dong, int ho) {
+        setDirty();
+        return security.computeIfAbsent(householdKey(complex, dong, ho), k -> new Security());
+    }
+
+    public Alert addAlert(int complex, String text, String time) {
+        Alert a = new Alert(nextAlert++);
+        a.complex = complex;
+        a.text = text;
+        a.time = time;
+        alerts.add(a);
+        while (alerts.size() > 50) alerts.remove(0);
+        setDirty();
+        return a;
+    }
+
+    public List<Alert> alertsOf(int complex) {
+        List<Alert> out = new ArrayList<>();
+        for (Alert a : alerts) if (a.complex == complex) out.add(a);
+        return out;
+    }
+
+    public void removeAlert(int id) {
+        if (alerts.removeIf(a -> a.id == id)) setDirty();
     }
 
     public void setAway(int complex, int dong, int ho, boolean away) {
@@ -291,6 +347,10 @@ public class NetworkData extends SavedData {
             for (Zone z : zones.values()) if (z.complex == other) z.complex = target;
             for (Card c : cards.values()) if (c.complex == other) c.complex = target;
             rekey(householdPasswords, other, target);
+            for (String k : new ArrayList<>(security.keySet())) {
+                if (k.startsWith(other + ":")) security.putIfAbsent(target + k.substring(k.indexOf(':')), security.remove(k));
+            }
+            for (Alert a : alerts) if (a.complex == other) a.complex = target;
             Set<String> away = new HashSet<>(awayHouseholds);
             for (String k : away) {
                 if (k.startsWith(other + ":")) {
@@ -344,6 +404,8 @@ public class NetworkData extends SavedData {
         complexes.remove(complex);
         householdPasswords.keySet().removeIf(k -> k.startsWith(complex + ":"));
         awayHouseholds.removeIf(k -> k.startsWith(complex + ":"));
+        security.keySet().removeIf(k -> k.startsWith(complex + ":"));
+        alerts.removeIf(a -> a.complex == complex);
         cards.values().removeIf(c -> c.complex == complex);
     }
 
@@ -491,6 +553,25 @@ public class NetworkData extends SavedData {
         for (String k : pw.getAllKeys()) data.householdPasswords.put(k, pw.getString(k));
         ListTag aw = tag.getList("away", Tag.TAG_STRING);
         for (int i = 0; i < aw.size(); i++) data.awayHouseholds.add(aw.getString(i));
+        CompoundTag sec = tag.getCompound("security");
+        for (String k : sec.getAllKeys()) {
+            CompoundTag t = sec.getCompound(k);
+            Security s = new Security();
+            s.mode = t.getInt("mode");
+            s.armAt = t.getLong("armAt");
+            s.alarm = t.getBoolean("alarm");
+            data.security.put(k, s);
+        }
+        data.nextAlert = Math.max(1, tag.getInt("nextAlert"));
+        ListTag al = tag.getList("alerts", Tag.TAG_COMPOUND);
+        for (int i = 0; i < al.size(); i++) {
+            CompoundTag t = al.getCompound(i);
+            Alert a = new Alert(t.getInt("id"));
+            a.complex = t.getInt("complex");
+            a.text = t.getString("text");
+            a.time = t.getString("time");
+            data.alerts.add(a);
+        }
         ListTag kl = tag.getList("cards", Tag.TAG_COMPOUND);
         for (int i = 0; i < kl.size(); i++) {
             CompoundTag t = kl.getCompound(i);
@@ -567,6 +648,27 @@ public class NetworkData extends SavedData {
         tag.put("householdPw", pw);
         ListTag aw = new ListTag();
         for (String s : awayHouseholds) aw.add(net.minecraft.nbt.StringTag.valueOf(s));
+        CompoundTag sec = new CompoundTag();
+        for (Map.Entry<String, Security> e : security.entrySet()) {
+            if (e.getValue().mode == 0 && !e.getValue().alarm) continue;
+            CompoundTag t = new CompoundTag();
+            t.putInt("mode", e.getValue().mode);
+            t.putLong("armAt", e.getValue().armAt);
+            t.putBoolean("alarm", e.getValue().alarm);
+            sec.put(e.getKey(), t);
+        }
+        tag.put("security", sec);
+        tag.putInt("nextAlert", nextAlert);
+        ListTag al = new ListTag();
+        for (Alert a : alerts) {
+            CompoundTag t = new CompoundTag();
+            t.putInt("id", a.id);
+            t.putInt("complex", a.complex);
+            t.putString("text", a.text);
+            t.putString("time", a.time);
+            al.add(t);
+        }
+        tag.put("alerts", al);
         tag.put("away", aw);
         ListTag kl = new ListTag();
         for (Card c : cards.values()) {

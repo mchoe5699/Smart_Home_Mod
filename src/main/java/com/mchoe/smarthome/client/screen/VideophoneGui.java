@@ -15,6 +15,8 @@ public class VideophoneGui extends DeviceGui {
     private boolean intercom;
     /** 설정 화면 (번호 설정 / 세대 비밀번호) */
     private boolean setup;
+    /** 외출/방범 화면 */
+    private boolean secPage;
     private boolean pwEntry;
     private String input = "";
 
@@ -27,6 +29,7 @@ public class VideophoneGui extends DeviceGui {
         if (!idle()) {
             monitor = false;
             intercom = false;
+            secPage = false;
             setup = false;
             pwEntry = false;
         }
@@ -34,6 +37,10 @@ public class VideophoneGui extends DeviceGui {
 
     @Override
     protected void onKey(char c) {
+        if (secPage) {
+            securityKey(c);
+            return;
+        }
         if (pwEntry) {
             if (c == '<') {
                 if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
@@ -92,7 +99,7 @@ public class VideophoneGui extends DeviceGui {
         }
 
         // 오른쪽 버튼
-        int bx = x + w - 80, bw = 66, by = y + 14, bh = 24, gap = 6;
+        int bx = x + w - 80, bw = 66, by = y + 14, bh = 20, gap = 4;
         int st = status();
         buttonIcon(g, bx, by, bw, bh, I_CCTV, "모니터", monitor ? 0xFF2E7DD7 : 0xFFCFCFCB, monitor ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
             if (idle()) {
@@ -119,12 +126,23 @@ public class VideophoneGui extends DeviceGui {
             });
             by += bh + gap;
         }
+        buttonIcon(g, bx, by, bw, bh, I_AWAY, "방범", secPage ? 0xFFC98A2E : data.getInt("secMode") > 0 ? 0xFFE5A84D : 0xFFCFCFCB,
+                secPage || data.getInt("secMode") > 0 ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
+            if (!idle()) return;
+            secPage = !secPage;
+            setup = false;
+            monitor = false;
+            intercom = false;
+            secInput = "";
+        });
+        by += bh + gap;
         buttonIcon(g, bx, by, bw, bh, I_HANGUP, "종료", 0xFFCFCFCB, 0xFFB43A3A, mx, my, () -> {
             if (!idle()) act("hangup");
             monitor = false;
             intercom = false;
             setup = false;
             pwEntry = false;
+            secPage = false;
         });
         button(g, x + w - 18, y + h - 16, 14, 12, "⚙", setup ? 0xFF2E7DD7 : 0xFFCFCFCB, setup ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
             if (!idle()) return;
@@ -147,6 +165,10 @@ public class VideophoneGui extends DeviceGui {
             g.fill(x, y + h - 14, x + w, y + h, 0xC0000000);
             int c = st == DeviceLogic.STATUS_CONNECTED ? 0x4CD27A : ((ticks / 8) % 2 == 0 ? 0xFFD34E : 0xFFFFFF);
             fitText(g, "● " + statusText() + "  " + data.getString("peer"), x + 4, y + h - 11, w - 8, c);
+            return;
+        }
+        if (secPage) {
+            securityPanel(g, x + 2, y + 2, w - 4, h - 4, mx, my);
             return;
         }
         if (setup) {

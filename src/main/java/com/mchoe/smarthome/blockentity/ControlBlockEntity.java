@@ -75,7 +75,10 @@ public class ControlBlockEntity extends BlockEntity {
             if (c.pulse == 0 || c.pulse == 19) be.applyFromRegistry();
             return;
         }
-        if (++be.tickCounter % 10 == 0) be.applyFromRegistry();
+        if (++be.tickCounter % 10 == 0) {
+            if (c.kind.isMotion()) com.mchoe.smarthome.logic.SecurityLogic.sensorTick((ServerLevel) level, pos, state, c);
+            be.applyFromRegistry();
+        }
     }
 
     @Override

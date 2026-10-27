@@ -1,0 +1,24 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "redstone",
+ "pattern": [
+  "III",
+  "IEI",
+  "IRI"
+ ],
+ "key": {
+  "I": {
+   "item": "minecraft:iron_ingot"
+  },
+  "E": {
+   "item": "minecraft:ender_eye"
+  },
+  "R": {
+   "item": "minecraft:comparator"
+  }
+ },
+ "result": {
+  "item": "smart_home_mod:motion_sensor_outdoor",
+  "count": 1
+ }
+}

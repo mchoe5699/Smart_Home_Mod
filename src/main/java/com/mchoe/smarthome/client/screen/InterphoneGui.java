@@ -53,7 +53,7 @@ public class InterphoneGui extends DeviceGui {
         int ink = 0xFF1C2A1C;
         if (st == DeviceLogic.STATUS_IDLE) {
             g.drawString(font, DeviceLogic.num(data.getInt("dong")) + "-" + DeviceLogic.num(data.getInt("ho")) + "  " + clock(), rx + 4, ly + 4, ink, false);
-            g.drawString(font, !type.canDial() ? "경비실 호출 가능" : input.isEmpty() ? "동*호 → 통화" : input, rx + 4, ly + 22, ink, false);
+            g.drawString(font, !type.canDial() ? "경비실 호출 가능" : input.isEmpty() ? (data.getInt("secMode") != 0 ? "방범 중" : "동*호 → 통화") : (data.getInt("secMode") != 0 ? input.replaceAll(".", "*") : input), rx + 4, ly + 22, ink, false);
         } else {
             g.drawString(font, statusText(), rx + 4, ly + 4, ink, false);
             fitText(g, data.getString("peer"), rx + 4, ly + 22, rw - 8, ink);
@@ -77,7 +77,24 @@ public class InterphoneGui extends DeviceGui {
             if (!idle()) act("hangup");
             input = "";
         });
-        g.drawString(font, "음성 전용", rx, y + h - 14, 0xFF9C9686, false);
+        // 외출/방범: 설정은 바로, 해제는 키패드로 세대 비밀번호 입력 후
+        int sm = data.getInt("secMode");
+        int rem = data.getInt("secRemain");
+        String secLabel = sm == 0 ? "외출 설정" : data.getBoolean("secAlarm") ? "경보! 해제" : (rem > 0 ? "유예 " + rem + "초 · 해제" : "방범 해제");
+        buttonIcon(g, rx, fy + 58, rw, 20, I_AWAY, secLabel, sm == 0 ? 0xFFC98A2E : 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> {
+            if (data.getInt("secMode") == 0) {
+                arm(1);
+            } else if (!type.canDial()) {
+                if (minecraft.player != null) minecraft.player.displayClientMessage(
+                        net.minecraft.network.chat.Component.literal("해제는 월패드·비디오폰에서 세대 비밀번호로 하세요"), true);
+            } else {
+                secInput = input;
+                input = "";
+                disarm();
+            }
+        });
+        if (sm != 0 && type.canDial() && idle()) g.drawString(font, "비밀번호 입력 후 [해제]", rx, y + h - 14, 0xFF9C9686, false);
+        else g.drawString(font, "음성 전용", rx, y + h - 14, 0xFF9C9686, false);
         buttonIcon(g, x + w - 20, y + h - 18, 16, 14, I_GEAR, "", 0xFFD8D2C0, 0xFF30343A, mx, my, this::openSettings);
     }
 }

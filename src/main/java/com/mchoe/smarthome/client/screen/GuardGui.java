@@ -14,6 +14,7 @@ import net.minecraft.nbt.Tag;
 public class GuardGui extends DeviceGui {
     private String input = "";
     private int cctv = -1;
+    private int mouseX, mouseY;
 
     public GuardGui(BlockPos pos, CompoundTag data) {
         super(pos, data, 430, 270);
@@ -34,6 +35,8 @@ public class GuardGui extends DeviceGui {
     @Override
     protected void drawDevice(GuiGraphics g, int mx, int my) {
         int x = left, y = top, w = panelW, h = panelH;
+        mouseX = mx;
+        mouseY = my;
         body(g, tex("guard"));
         icon(g, I_GUARD, x + 8, y + 3, 10, 0xFFFFFF);
         g.drawString(font, "경비실 " + DeviceLogic.num(data.getInt("guard")), x + 21, y + 4, 0xFFFFFF, false);
@@ -190,6 +193,29 @@ public class GuardGui extends DeviceGui {
             CompoundTag c = cams.getCompound(cctv);
             drawFeed(g, BlockPos.of(c.getLong("pos")), x, y, w, h);
             g.drawString(font, "CCTV " + (cctv + 1) + "/" + cams.size() + "  " + c.getString("label"), x + 4, y + 4, 0xFFFFFF, true);
+            return;
+        }
+        ListTag alerts = data.getList("alerts", Tag.TAG_COMPOUND);
+        if (!alerts.isEmpty()) {
+            boolean blink = (ticks / 8) % 2 == 0;
+            g.fillGradient(x, y, x + w, y + h, blink ? 0xFF4A1018 : 0xFF2A0A10, 0xFF14060A);
+            icon(g, I_GUARD, x + 4, y + 3, 14, 0xFF6B6B);
+            g.drawString(font, "방범 경보 " + alerts.size() + "건", x + 22, y + 6, 0xFF6B6B, false);
+            button(g, x + w - 64, y + 3, 60, 14, "전체 확인", 0xFF6C2A2A, 0xFFFFFFFF, mouseX, mouseY, () -> act("alert_ack"));
+            int ry = y + 22;
+            for (int i = alerts.size() - 1; i >= 0 && ry < y + h - 18; i--) {
+                CompoundTag a = alerts.getCompound(i);
+                int id = a.getInt("id");
+                g.fill(x + 3, ry, x + w - 3, ry + 24, 0x40000000);
+                g.drawString(font, a.getString("time"), x + 6, ry + 2, 0xFFD34E, false);
+                fitText(g, a.getString("text"), x + 6, ry + 13, w - 56, 0xFFFFFF);
+                button(g, x + w - 44, ry + 4, 38, 16, "확인", 0xFF2E6DB4, 0xFFFFFFFF, mouseX, mouseY, () -> {
+                    CompoundTag t = new CompoundTag();
+                    t.putInt("id", id);
+                    act("alert_ack", t);
+                });
+                ry += 27;
+            }
             return;
         }
         if (data.getBoolean("away")) {

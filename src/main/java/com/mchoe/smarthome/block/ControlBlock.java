@@ -54,6 +54,8 @@ public class ControlBlock extends BaseEntityBlock {
             case THERMOSTAT -> box(5.5, 5.5, 15.25, 10.5, 10.5, 16);
             case GAS_VALVE -> Shapes.or(box(7, 0, 13, 9, 16, 15), box(5, 5, 11.5, 11, 11, 15.5));
             case ELEVATOR_LINK -> box(5, 5, 14.5, 11, 11, 16);
+            case MOTION_OUTDOOR -> box(5, 6, 13, 11, 10.5, 16);
+            case MOTION_INDOOR -> box(6, 9, 13.8, 10, 12.5, 16);
         });
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(ON, false).setValue(POWERED, false));
     }
