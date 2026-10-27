@@ -1,0 +1,11 @@
+{
+  "itemGroup.smart_home_mod": "스마트홈",
+  "block.smart_home_mod.wallpad": "월패드",
+  "block.smart_home_mod.videophone": "비디오폰",
+  "block.smart_home_mod.interphone": "인터폰",
+  "block.smart_home_mod.door_camera": "도어카메라",
+  "block.smart_home_mod.door_phone": "도어폰",
+  "block.smart_home_mod.lobby_phone": "로비폰",
+  "block.smart_home_mod.guard_station": "경비실기",
+  "block.smart_home_mod.complex_dashboard": "단지 대시보드"
+}

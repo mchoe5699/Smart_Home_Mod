@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "smart_home_mod:block/wallpad"
+    },
+    "facing=east": {
+      "model": "smart_home_mod:block/wallpad",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "smart_home_mod:block/wallpad",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "smart_home_mod:block/wallpad",
+      "y": 270
+    }
+  }
+}

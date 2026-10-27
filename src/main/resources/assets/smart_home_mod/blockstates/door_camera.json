@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "smart_home_mod:block/door_camera"
+    },
+    "facing=east": {
+      "model": "smart_home_mod:block/door_camera",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "smart_home_mod:block/door_camera",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "smart_home_mod:block/door_camera",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "smart_home_mod:block/guard_station"
+    },
+    "facing=east": {
+      "model": "smart_home_mod:block/guard_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "smart_home_mod:block/guard_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "smart_home_mod:block/guard_station",
+      "y": 270
+    }
+  }
+}

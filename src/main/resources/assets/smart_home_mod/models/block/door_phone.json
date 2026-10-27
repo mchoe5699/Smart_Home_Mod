@@ -1,0 +1,42 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "smart_home_mod:block/door_phone_body",
+    "body": "smart_home_mod:block/door_phone_body",
+    "front": "smart_home_mod:block/door_phone_front"
+  },
+  "elements": [
+    {
+      "from": [
+        6,
+        5,
+        14.5
+      ],
+      "to": [
+        10,
+        11,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#front"
+        },
+        "south": {
+          "texture": "#body"
+        },
+        "east": {
+          "texture": "#body"
+        },
+        "west": {
+          "texture": "#body"
+        },
+        "up": {
+          "texture": "#body"
+        },
+        "down": {
+          "texture": "#body"
+        }
+      }
+    }
+  ]
+}

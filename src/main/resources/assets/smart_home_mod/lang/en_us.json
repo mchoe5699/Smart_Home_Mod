@@ -1,0 +1,11 @@
+{
+  "itemGroup.smart_home_mod": "Smart Home",
+  "block.smart_home_mod.wallpad": "Wallpad",
+  "block.smart_home_mod.videophone": "Video Phone",
+  "block.smart_home_mod.interphone": "Interphone",
+  "block.smart_home_mod.door_camera": "Door Camera",
+  "block.smart_home_mod.door_phone": "Door Phone",
+  "block.smart_home_mod.lobby_phone": "Lobby Phone",
+  "block.smart_home_mod.guard_station": "Guard Station",
+  "block.smart_home_mod.complex_dashboard": "Complex Dashboard"
+}
