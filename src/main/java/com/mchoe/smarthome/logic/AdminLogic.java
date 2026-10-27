@@ -1,6 +1,7 @@
 package com.mchoe.smarthome.logic;
 
 import com.mchoe.smarthome.ModRegistry;
+import com.mchoe.smarthome.blockentity.DeviceBlockEntity;
 import com.mchoe.smarthome.item.AccessCardItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -115,11 +116,15 @@ public final class AdminLogic {
             case "comp_card_register" -> registerCard(player, level, data, cid, args);
             case "comp_card_revoke" -> data.setCardRevoked(args.getInt("id"), args.getBoolean("revoked"));
             case "comp_card_delete" -> data.deleteCard(args.getInt("id"));
+            case "comp_card_delete_all" -> {
+                int n = data.deleteCards(cid, NetworkData.UNSET);
+                DeviceLogic.msg(player, "단지 카드 " + n + "장을 모두 삭제했습니다", ChatFormatting.YELLOW);
+            }
             default -> { }
         }
     }
 
-    private static void registerCard(ServerPlayer player, ServerLevel level, NetworkData data, int cid, CompoundTag args) {
+    static void registerCard(ServerPlayer player, ServerLevel level, NetworkData data, int cid, CompoundTag args) {
         // 카드등록용 카드(공카드)를 찾는다: 주 손 우선, 없으면 인벤토리
         ItemStack blank = ItemStack.EMPTY;
         if (player.getMainHandItem().is(ModRegistry.BLANK_CARD.get())) blank = player.getMainHandItem();
@@ -148,5 +153,73 @@ public final class AdminLogic {
         if (!player.getInventory().add(access)) player.drop(access, false);
         level.playSound(null, player.blockPosition(), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.PLAYERS, 0.7f, 2.0f);
         DeviceLogic.msg(player, "출입 카드 #" + card.id + " 등록 완료", ChatFormatting.GREEN);
+    }
+
+    // ------------------------------------------------------------------ 로비폰 관리자 모드
+
+    /**
+     * 로비폰 관리자 기능. 모든 요청에 관리자 인증(현재 공용 비밀번호)을 함께 보낸다.
+     * 공용 비밀번호가 아직 없으면 인증 없이 들어갈 수 있다.
+     * @return 실패 사유 (성공이면 null)
+     */
+    static String lobbyAdmin(ServerPlayer player, ServerLevel level, DeviceBlockEntity dev, String action, CompoundTag args) {
+        if (dev.getDeviceType() != DeviceType.LOBBY_PHONE) return null;
+        NetworkData data = NetworkData.get(level);
+        int cid = data.complexAt(dev.getBlockPos());
+        NetworkData.Complex cx = data.getComplex(cid);
+        if (cx == null) return "단지 구획 밖입니다";
+        String auth = args.getString("auth");
+        if (!cx.commonPassword.isEmpty() && !cx.commonPassword.equals(auth)) {
+            level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
+            DeviceLogic.extra().putBoolean("adminFail", true);
+            return "관리자 인증 실패 (공용 비밀번호가 다릅니다)";
+        }
+        // 일반 로비는 그 동의 세대 카드만, 단지 외곽 로비(9999동)는 단지 전체 카드를 관리
+        int scopeDong = dev.getDong() == DeviceLogic.OUTER_LOBBY_DONG ? NetworkData.UNSET : dev.getDong();
+        switch (action) {
+            case "lobby_admin" -> {
+                DeviceLogic.extra().putBoolean("adminOk", true);
+                DeviceLogic.msg(player, "관리자 모드", ChatFormatting.AQUA);
+            }
+            case "lobby_common_pw" -> {
+                String pw = args.getString("pw").trim();
+                if (!pw.isEmpty() && !pw.matches("\\d{4,8}")) return "공용 비밀번호는 숫자 4~8자리입니다";
+                data.setCommonPassword(cid, pw);
+                DeviceLogic.extra().putString("newAuth", pw);
+                DeviceLogic.msg(player, pw.isEmpty() ? "공용 비밀번호를 삭제했습니다" : "공용 비밀번호를 변경했습니다", ChatFormatting.GREEN);
+            }
+            case "lobby_card_register" -> {
+                boolean all = args.getBoolean("all");
+                if (!all && scopeDong >= 0 && args.getInt("dong") != scopeDong) {
+                    return "이 로비폰에서는 " + scopeDong + "동 카드만 등록할 수 있습니다";
+                }
+                if (all && scopeDong >= 0) return "단지 전체 카드는 단지 외곽 로비폰이나 관리 컴퓨터에서 등록하세요";
+                registerCard(player, level, data, cid, args);
+            }
+            case "lobby_card_delete" -> {
+                int id = args.getInt("id");
+                ItemStack held = player.getMainHandItem();
+                boolean fromHand = id <= 0;
+                if (fromHand) {
+                    if (!(held.getItem() instanceof AccessCardItem)) return "삭제할 출입용 카드를 손에 들어 주세요";
+                    id = AccessCardItem.cardId(held);
+                }
+                NetworkData.Card card = data.getCard(id);
+                if (card == null || card.complex != cid) return "이 단지에 등록된 카드가 아닙니다";
+                if (scopeDong >= 0 && card.dong != scopeDong) return "이 로비폰에서 관리하는 카드가 아닙니다";
+                data.deleteCard(id);
+                if (fromHand) {
+                    // 등록이 지워진 카드는 다시 카드등록용 카드가 된다
+                    player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(ModRegistry.BLANK_CARD.get()));
+                }
+                DeviceLogic.msg(player, "카드 #" + id + " 삭제", ChatFormatting.YELLOW);
+            }
+            case "lobby_card_delete_all" -> {
+                int n = data.deleteCards(cid, scopeDong);
+                DeviceLogic.msg(player, (scopeDong >= 0 ? scopeDong + "동 " : "단지 ") + "카드 " + n + "장을 모두 삭제했습니다", ChatFormatting.YELLOW);
+            }
+            default -> { }
+        }
+        return null;
     }
 }

@@ -105,6 +105,13 @@ public final class DeviceLogic {
 
     // ------------------------------------------------------------------ 화면 열기
 
+    /** 이번 응답 화면 데이터에 덧붙일 값 (관리자 인증 결과 등) */
+    private static CompoundTag extra = new CompoundTag();
+
+    static CompoundTag extra() {
+        return extra;
+    }
+
     public static void openScreen(ServerPlayer player, BlockPos pos, boolean refreshOnly) {
         if (!(player.level() instanceof ServerLevel level)) return;
         BlockEntity be = level.getBlockEntity(pos);
@@ -120,6 +127,10 @@ public final class DeviceLogic {
             tag.putString("kind", "dashboard");
         } else {
             return;
+        }
+        if (!extra.isEmpty()) {
+            tag.merge(extra);
+            extra = new CompoundTag();
         }
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new ScreenDataPacket(pos, refreshOnly, tag));
         if (!refreshOnly && tag.getString("kind").equals("dashboard")) {
@@ -185,6 +196,11 @@ public final class DeviceLogic {
                 tag.putBoolean("hasPw", !data.householdPassword(cid, d.getDong(), d.getHo()).isEmpty());
             }
             if (type == DeviceType.WALLPAD) HomeLogic.writeHousehold(level, data, cid, d.getDong(), d.getHo(), tag);
+            if (type == DeviceType.LOBBY_PHONE) {
+                int scope = d.getDong() == OUTER_LOBBY_DONG ? NetworkData.UNSET : d.getDong();
+                tag.putBoolean("commonSet", !cx.commonPassword.isEmpty());
+                tag.putInt("cardCount", data.countCards(cid, scope));
+            }
         }
         return tag;
     }
@@ -228,6 +244,8 @@ public final class DeviceLogic {
             case "open_door" -> openDoor(level, player, pos);
             case "say" -> CallManager.say(level, pos, player, args.getString("text"));
             case "password" -> lobbyPassword(level, player, dev, args.getString("input"));
+            case "lobby_admin", "lobby_common_pw", "lobby_card_register", "lobby_card_delete", "lobby_card_delete_all" ->
+                    AdminLogic.lobbyAdmin(player, level, dev, action, args);
             default -> HomeLogic.handleWallpad(player, level, dev, action, args);
         };
         if (error != null) msg(player, error, ChatFormatting.RED);

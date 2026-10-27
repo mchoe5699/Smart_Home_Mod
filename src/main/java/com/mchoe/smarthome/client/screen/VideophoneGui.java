@@ -13,6 +13,9 @@ public class VideophoneGui extends DeviceGui {
     private static final int BODY = 0xFFE6E6E2;
     private boolean monitor;
     private boolean intercom;
+    /** 설정 화면 (번호 설정 / 세대 비밀번호) */
+    private boolean setup;
+    private boolean pwEntry;
     private String input = "";
 
     public VideophoneGui(BlockPos pos, CompoundTag data) {
@@ -24,11 +27,23 @@ public class VideophoneGui extends DeviceGui {
         if (!idle()) {
             monitor = false;
             intercom = false;
+            setup = false;
+            pwEntry = false;
         }
     }
 
     @Override
     protected void onKey(char c) {
+        if (pwEntry) {
+            if (c == '<') {
+                if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
+            } else if (c == '\n' || c == '#') {
+                savePw(input);
+            } else if (c >= '0' && c <= '9' && input.length() < 8) {
+                input += c;
+            }
+            return;
+        }
         if (!intercom) return;
         if (c == '<') {
             if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
@@ -37,6 +52,18 @@ public class VideophoneGui extends DeviceGui {
         } else if (input.length() < 10) {
             input += c;
         }
+    }
+
+    private void savePw(String pw) {
+        if (!pw.isEmpty() && pw.length() < 4) {
+            minecraft.player.displayClientMessage(net.minecraft.network.chat.Component.literal("세대 비밀번호는 숫자 4~8자리입니다"), true);
+            return;
+        }
+        CompoundTag t = new CompoundTag();
+        t.putString("pw", pw);
+        act("set_pw", t);
+        input = "";
+        pwEntry = false;
     }
 
     private void talk() {
@@ -97,8 +124,17 @@ public class VideophoneGui extends DeviceGui {
             if (!idle()) act("hangup");
             monitor = false;
             intercom = false;
+            setup = false;
+            pwEntry = false;
         });
-        button(g, x + w - 18, y + h - 16, 14, 12, "⚙", 0xFFCFCFCB, 0xFF30343A, mx, my, this::openSettings);
+        button(g, x + w - 18, y + h - 16, 14, 12, "⚙", setup ? 0xFF2E7DD7 : 0xFFCFCFCB, setup ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
+            if (!idle()) return;
+            setup = !setup;
+            pwEntry = false;
+            monitor = false;
+            intercom = false;
+            input = "";
+        });
     }
 
     private void drawScreen(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
@@ -111,6 +147,10 @@ public class VideophoneGui extends DeviceGui {
             g.fill(x, y + h - 14, x + w, y + h, 0xC0000000);
             int c = st == DeviceLogic.STATUS_CONNECTED ? 0x4CD27A : ((ticks / 8) % 2 == 0 ? 0xFFD34E : 0xFFFFFF);
             fitText(g, "● " + statusText() + "  " + data.getString("peer"), x + 4, y + h - 11, w - 8, c);
+            return;
+        }
+        if (setup) {
+            drawSetup(g, x, y, w, h, mx, my);
             return;
         }
         if (monitor) {
@@ -130,5 +170,33 @@ public class VideophoneGui extends DeviceGui {
         // 대기: 화면 꺼짐
         g.drawString(font, clock(), x + w - 6 - font.width(clock()), y + h - 12, 0xFF3A4654, false);
         if (data.getString("complex").isEmpty()) centered(g, "단지 구획 밖", x + w / 2, y + h / 2, 0xFF6B6B);
+    }
+
+    private void drawSetup(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
+        g.fill(x, y, x + w, y + 14, 0xFF1E4D8C);
+        g.drawString(font, pwEntry ? "세대 비밀번호" : "설정", x + 4, y + 3, 0xFFFFFF, false);
+        if (!pwEntry) {
+            g.drawString(font, "관할경비실 " + DeviceLogic.num(data.getInt("guard")) + " · " + DeviceLogic.num(data.getInt("dong")) + "동 "
+                    + DeviceLogic.num(data.getInt("ho")) + "호", x + 8, y + 22, 0xFFFFFF, false);
+            button(g, x + 8, y + 36, w - 16, 26, "관할경비실·세대번호 설정", 0xFF1E3A5A, 0xFFFFFFFF, mx, my, this::openSettings);
+            g.drawString(font, "세대 비밀번호: " + (data.getBoolean("hasPw") ? "설정됨" : "없음"), x + 8, y + 74, 0x9AA7B8, false);
+            button(g, x + 8, y + 88, w - 16, 26, "세대 비밀번호 설정", 0xFF1E3A5A, 0xFFFFFFFF, mx, my, () -> {
+                pwEntry = true;
+                input = "";
+            });
+            g.drawString(font, "로비폰 [열쇠] → 호*비밀번호 → #", x + 8, y + 124, 0x707880, false);
+            return;
+        }
+        g.fill(x + 6, y + 18, x + w - 6, y + 34, 0xFF101820);
+        String masked = input.replaceAll("[0-9]", "●");
+        g.drawString(font, masked.isEmpty() ? "숫자 4~8자리" : masked, x + 10, y + 22, masked.isEmpty() ? 0x707880 : 0xFFFFFF, false);
+        keypad(g, x + 8, y + 40, 40, 26, 4, 0xFF1E3A5A, 0xFFFFFFFF, mx, my);
+        int bx = x + 144, bw = w - 152;
+        button(g, bx, y + 40, bw, 26, "저장", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> savePw(input));
+        button(g, bx, y + 70, bw, 26, "삭제", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> savePw(""));
+        button(g, bx, y + 100, bw, 26, "뒤로", 0xFF4C5866, 0xFFFFFFFF, mx, my, () -> {
+            pwEntry = false;
+            input = "";
+        });
     }
 }

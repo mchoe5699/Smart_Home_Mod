@@ -386,6 +386,21 @@ public class NetworkData extends SavedData {
         if (cards.remove(id) != null) setDirty();
     }
 
+    /** 카드 일괄 삭제. dong < 0 이면 단지의 모든 카드, 아니면 그 동의 세대 카드만. 삭제한 개수를 돌려준다 */
+    public int deleteCards(int complex, int dong) {
+        int before = cards.size();
+        cards.values().removeIf(c -> c.complex == complex && (dong < 0 || c.dong == dong));
+        int n = before - cards.size();
+        if (n > 0) setDirty();
+        return n;
+    }
+
+    public int countCards(int complex, int dong) {
+        int n = 0;
+        for (Card c : cards.values()) if (c.complex == complex && (dong < 0 || c.dong == dong)) n++;
+        return n;
+    }
+
     // ------------------------------------------------------------------ 저장
 
     public static NetworkData load(CompoundTag tag) {

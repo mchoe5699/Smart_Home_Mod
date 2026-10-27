@@ -36,6 +36,7 @@ public class ComputerScreen extends Screen implements DataScreen {
     private Tab tab = Tab.STATUS;
     private int page;
     private boolean allAccess;
+    private boolean confirmAll;
     private String signature = "";
     private int ticks;
     private final Map<String, String> values = new HashMap<>();
@@ -110,6 +111,7 @@ public class ComputerScreen extends Screen implements DataScreen {
             Button b = Button.builder(Component.literal(t.title), x -> {
                 tab = t;
                 page = 0;
+                confirmAll = false;
                 rebuildWidgets();
             }).bounds(tx, top + 22, 80, 18).build();
             b.active = t != tab;
@@ -145,6 +147,16 @@ public class ComputerScreen extends Screen implements DataScreen {
                     t.putBoolean("all", allAccess);
                     t.putString("holder", val("holder"));
                     send("comp_card_register", t);
+                });
+                btn(confirmAll ? "한 번 더: 전체 삭제" : "카드 전체 삭제", x + 306, y + 22, 106, () -> {
+                    if (!confirmAll) {
+                        confirmAll = true;
+                        rebuildWidgets();
+                        return;
+                    }
+                    confirmAll = false;
+                    send("comp_card_delete_all", null);
+                    rebuildWidgets();
                 });
                 ListTag cards = data.getList("cards", Tag.TAG_COMPOUND);
                 int start = page * ROWS;
