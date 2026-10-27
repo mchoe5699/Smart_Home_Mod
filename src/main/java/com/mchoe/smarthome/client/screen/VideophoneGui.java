@@ -37,7 +37,7 @@ public class VideophoneGui extends DeviceGui {
 
     @Override
     protected void onKey(char c) {
-        if (secPage) {
+        if (secPage && type.hasSecurity()) {
             securityKey(c);
             return;
         }
@@ -126,17 +126,19 @@ public class VideophoneGui extends DeviceGui {
             });
             by += bh + gap;
         }
-        buttonIcon(g, bx, by, bw, bh, I_AWAY, "방범", secPage ? 0xFFC98A2E : data.getInt("secMode") > 0 ? 0xFFE5A84D : 0xFFCFCFCB,
-                secPage || data.getInt("secMode") > 0 ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
-            if (!idle()) return;
-            secPage = !secPage;
-            setup = false;
-            monitor = false;
-            intercom = false;
-            secInput = "";
-        });
-        by += bh + gap;
-        buttonIcon(g, bx, by, bw, bh, I_HANGUP, "종료", 0xFFCFCFCB, 0xFFB43A3A, mx, my, () -> {
+        if (type.hasSecurity()) {
+            buttonIcon(g, bx, by, bw, bh, I_AWAY, "방범", secPage ? 0xFFC98A2E : data.getInt("secMode") > 0 ? 0xFFE5A84D : 0xFFCFCFCB,
+                    secPage || data.getInt("secMode") > 0 ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
+                if (!idle()) return;
+                secPage = !secPage;
+                setup = false;
+                monitor = false;
+                intercom = false;
+                secInput = "";
+            });
+            by += bh + gap;
+        }
+                buttonIcon(g, bx, by, bw, bh, I_HANGUP, "종료", 0xFFCFCFCB, 0xFFB43A3A, mx, my, () -> {
             if (!idle()) act("hangup");
             monitor = false;
             intercom = false;

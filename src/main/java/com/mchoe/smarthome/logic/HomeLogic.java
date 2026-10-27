@@ -102,15 +102,15 @@ public final class HomeLogic {
                 level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 0.5f, 1.5f);
                 DeviceLogic.msg(player, "엘리베이터를 호출했습니다", ChatFormatting.AQUA);
             }
-            case "secure_on" -> {
-                return SecurityLogic.arm(player, level, data, cid, dong, ho, args.getInt("mode"));
-            }
-            case "secure_off" -> {
-                return SecurityLogic.disarm(player, level, dev.getBlockPos(), data, cid, dong, ho, args.getString("pw"));
-            }
-            case "away" -> {
-                return args.getBoolean("on") ? SecurityLogic.arm(player, level, data, cid, dong, ho, 1)
-                        : SecurityLogic.disarm(player, level, dev.getBlockPos(), data, cid, dong, ho, args.getString("pw"));
+            case "secure_on", "secure_off", "away" -> {
+                if (!dev.getDeviceType().hasSecurity()) return "이 기기에는 외출/방범 기능이 없습니다";
+                if (action.equals("secure_off")) {
+                    return SecurityLogic.disarm(player, level, dev.getBlockPos(), data, cid, dong, ho, args.getString("pw"));
+                }
+                if (action.equals("away") && !args.getBoolean("on")) {
+                    return SecurityLogic.disarm(player, level, dev.getBlockPos(), data, cid, dong, ho, args.getString("pw"));
+                }
+                return SecurityLogic.arm(player, level, data, cid, dong, ho, action.equals("away") ? 1 : args.getInt("mode"));
             }
             case "set_pw" -> {
                 String pw = args.getString("pw").trim();

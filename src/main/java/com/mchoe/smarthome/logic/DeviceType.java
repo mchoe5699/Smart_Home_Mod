@@ -57,6 +57,11 @@ public enum DeviceType {
         return this != VIDEOPHONE_BASIC && this != INTERPHONE_BASIC;
     }
 
+    /** 외출/방범모드 설정·해제 기능 (월패드, 일반 비디오폰, 다이얼 인터폰). 기본형 비디오폰·단순형 인터폰은 없음 */
+    public boolean hasSecurity() {
+        return this == WALLPAD || this == VIDEOPHONE || this == INTERPHONE;
+    }
+
     /** 비디오폰 계열 */
     public boolean isVideophone() {
         return this == VIDEOPHONE || this == VIDEOPHONE_BASIC;
