@@ -287,6 +287,8 @@ public final class DeviceLogic {
             case "password" -> lobbyPassword(level, player, dev, args.getString("input"));
             case "household_entry" -> householdEntry(level, player, dev, args.getInt("dong"), args.getInt("ho"), args.getString("pw"));
             case "common_entry" -> commonEntry(level, player, dev, args.getString("pw"), args.getBoolean("silent"));
+            case "lobby_pw_check_ho" -> lobbyPwCheckHo(level, dev, args.getInt("ho"));
+            case "lobby_pw_check_old" -> lobbyPwCheckOld(level, dev, args.getInt("ho"), args.getString("old"));
             case "lobby_pw_change" -> lobbyPwChange(level, player, dev, args.getInt("ho"), args.getString("old"), args.getString("new"));
             case "lobby_admin", "lobby_common_pw", "lobby_card_register", "lobby_card_delete", "lobby_card_delete_all", "lobby_common_toggle", "lobby_household_toggle" ->
                     AdminLogic.lobbyAdmin(player, level, dev, action, args);
@@ -619,9 +621,11 @@ public final class DeviceLogic {
      * 로비폰에서 세대 비밀번호 변경: [열쇠] 호 [호출] 기존 [호출] 새 비밀번호 [호출].
      * 동 번호가 부여된 로비폰에서만, 그리고 세대 안에 비밀번호를 바꿀 수 있는 기기가 없을 때만.
      */
-    private static String lobbyPwChange(ServerLevel level, ServerPlayer player, DeviceBlockEntity dev, int ho, String old, String neu) {
-        if (dev.getDeviceType() != DeviceType.LOBBY_PHONE) return null;
+    /** 로비폰에서 세대 비밀번호를 바꿀 수 있는 세대인지 (존재 · 동 로비 · 세대 안에 변경 가능 기기 없음) */
+    private static String checkChangeableHousehold(ServerLevel level, DeviceBlockEntity dev, int ho) {
+        if (dev.getDeviceType() != DeviceType.LOBBY_PHONE) return "로비폰이 아닙니다";
         if (dev.getDong() < 0 || dev.getDong() == OUTER_LOBBY_DONG) return "단지 출입용 로비폰에서는 세대 비밀번호를 바꿀 수 없습니다";
+        if (ho < 0 || ho > MAX_NUMBER) return "호 번호를 입력하세요";
         NetworkData data = NetworkData.get(level);
         int cid = data.complexAt(dev.getBlockPos());
         if (cid < 0) return OUTSIDE;
@@ -632,14 +636,54 @@ public final class DeviceLogic {
             exists = true;
             if (canSetHouseholdPw(d.type)) return "이 세대는 세대 내부기기(" + d.type.korean + ")에서 비밀번호를 변경하세요";
         }
-        if (!exists) return dong + "동 " + ho + "호 세대기가 없습니다";
-        if (!data.householdPassword(cid, dong, ho).equals(old == null ? "" : old.trim())) {
+        if (!exists) return dong + "동 " + ho + "호는 존재하지 않는 세대입니다";
+        return null;
+    }
+
+    private static boolean oldPwMatches(ServerLevel level, DeviceBlockEntity dev, int ho, String old) {
+        NetworkData data = NetworkData.get(level);
+        int cid = data.complexAt(dev.getBlockPos());
+        return data.householdPassword(cid, dev.getDong(), ho).equals(old == null ? "" : old.trim());
+    }
+
+    /** 변경 1단계: 호 번호 확인 */
+    private static String lobbyPwCheckHo(ServerLevel level, DeviceBlockEntity dev, int ho) {
+        String err = checkChangeableHousehold(level, dev, ho);
+        extra.putString(err == null ? "chgStep" : "chgFail", err == null ? "ho_ok" : "ho");
+        return err;
+    }
+
+    /** 변경 2단계: 기존 비밀번호 확인 (틀리면 새 비밀번호 단계로 못 넘어감) */
+    private static String lobbyPwCheckOld(ServerLevel level, DeviceBlockEntity dev, int ho, String old) {
+        String err = checkChangeableHousehold(level, dev, ho);
+        if (err == null && !oldPwMatches(level, dev, ho, old)) {
+            level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
+            err = "기존 비밀번호가 일치하지 않습니다";
+        }
+        extra.putString(err == null ? "chgStep" : "chgFail", err == null ? "old_ok" : "old");
+        return err;
+    }
+
+    /**
+     * 변경 3단계: 로비폰에서 세대 비밀번호 변경. [열쇠] 호 [호출] 기존 [호출] 새 비밀번호 [호출].
+     * 동 번호가 부여된 로비폰에서만, 세대가 존재하고 세대 안에 비밀번호를 바꿀 수 있는 기기가 없을 때만.
+     */
+    private static String lobbyPwChange(ServerLevel level, ServerPlayer player, DeviceBlockEntity dev, int ho, String old, String neu) {
+        String err = checkChangeableHousehold(level, dev, ho);
+        if (err != null) return err;
+        if (!oldPwMatches(level, dev, ho, old)) {
             level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.8f, 0.5f);
             return "기존 비밀번호가 일치하지 않습니다";
         }
         neu = neu == null ? "" : neu.trim();
-        if (!neu.matches("\\d{4,8}")) return "새 비밀번호는 숫자 4~8자리입니다";
-        data.setHouseholdPassword(cid, dong, ho, neu);
+        if (!neu.matches("\\d{4,8}")) {
+            extra.putString("chgFail", "new");
+            return "새 비밀번호는 숫자 4~8자리입니다";
+        }
+        NetworkData data = NetworkData.get(level);
+        int dong = dev.getDong();
+        data.setHouseholdPassword(data.complexAt(dev.getBlockPos()), dong, ho, neu);
+        extra.putString("chgStep", "done");
         level.playSound(null, dev.getBlockPos(), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 0.7f, 1.8f);
         msg(player, dong + "동 " + ho + "호 세대 비밀번호를 변경했습니다", ChatFormatting.GREEN);
         return null;

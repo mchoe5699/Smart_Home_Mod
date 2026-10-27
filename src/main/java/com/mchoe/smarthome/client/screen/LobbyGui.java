@@ -20,7 +20,7 @@ public class LobbyGui extends DeviceGui {
     private enum Admin { NONE, GEAR, WAIT, MENU, COMMON, REGISTER, DELETE_ID, DELETE_ALL }
 
     /** 일반 사용 단계 */
-    private enum Step { IDLE, HO, ENTRY_PW, COMMON, CHG_HO, CHG_OLD, CHG_NEW }
+    private enum Step { IDLE, HO, ENTRY_PW, COMMON, CHG_HO, CHG_HO_WAIT, CHG_OLD, CHG_OLD_WAIT, CHG_NEW, CHG_NEW_WAIT }
 
     private String input = "";
     private Step step = Step.IDLE;
@@ -39,6 +39,19 @@ public class LobbyGui extends DeviceGui {
     @Override
     protected void onDataChanged() {
         if (data.getBoolean("entryOk")) reset();
+        // 세대 비밀번호 변경: 단계마다 서버 확인을 통과해야 다음 단계로
+        String ok = data.getString("chgStep"), fail = data.getString("chgFail");
+        if (step == Step.CHG_HO_WAIT) {
+            if (ok.equals("ho_ok")) step = Step.CHG_OLD;
+            else if (!fail.isEmpty()) step = Step.CHG_HO;
+        } else if (step == Step.CHG_OLD_WAIT) {
+            if (ok.equals("old_ok")) step = Step.CHG_NEW;
+            else if (!fail.isEmpty()) step = Step.CHG_OLD;
+        } else if (step == Step.CHG_NEW_WAIT) {
+            if (ok.equals("done")) reset();
+            else if (fail.equals("new")) step = Step.CHG_NEW;
+            else if (!fail.isEmpty()) reset();
+        }
         if (data.getBoolean("adminOk")) {
             admin = Admin.MENU;
             input = "";
@@ -89,6 +102,7 @@ public class LobbyGui extends DeviceGui {
             return;
         }
         if (!idle() && status() != DeviceLogic.STATUS_RINGING) return;
+        if (step == Step.CHG_HO_WAIT || step == Step.CHG_OLD_WAIT || step == Step.CHG_NEW_WAIT) return;
         if (c == '<') {
             if (!input.isEmpty()) input = input.substring(0, input.length() - 1);
         } else if (c == '\n' || c == '#') {
@@ -156,21 +170,32 @@ public class LobbyGui extends DeviceGui {
                 if (input.isEmpty()) return;
                 enteredHo = num(input);
                 input = "";
-                step = Step.CHG_OLD;
+                step = Step.CHG_HO_WAIT;
+                CompoundTag t = new CompoundTag();
+                t.putInt("ho", enteredHo);
+                act("lobby_pw_check_ho", t);
             }
             case CHG_OLD -> {
+                if (input.isEmpty()) return;
                 chgOld = input;
                 input = "";
-                step = Step.CHG_NEW;
+                step = Step.CHG_OLD_WAIT;
+                CompoundTag t = new CompoundTag();
+                t.putInt("ho", enteredHo);
+                t.putString("old", chgOld);
+                act("lobby_pw_check_old", t);
             }
             case CHG_NEW -> {
+                if (input.isEmpty()) return;
                 CompoundTag t = new CompoundTag();
                 t.putInt("ho", enteredHo);
                 t.putString("old", chgOld);
                 t.putString("new", input);
+                input = "";
+                step = Step.CHG_NEW_WAIT;
                 act("lobby_pw_change", t);
-                reset();
             }
+            default -> { }
         }
     }
 
@@ -333,7 +358,7 @@ public class LobbyGui extends DeviceGui {
             if (admin == Admin.NONE) act("call_guard");
         });
         button(g, fx, ky + 64, fw, 26, "취소", 0xFFC98A2E, 0xFFFFFFFF, mx, my, this::cancel);
-        boolean keyStep = step == Step.ENTRY_PW || step == Step.CHG_HO || step == Step.CHG_OLD || step == Step.CHG_NEW;
+        boolean keyStep = step != Step.IDLE && step != Step.HO && step != Step.COMMON;
         buttonIcon(g, fx, ky + 96, fw, 26, I_KEY, "", keyStep ? 0xFFC98A2E : 0xFF6C7076, 0xFFFFFFFF, mx, my, this::pressKey);
 
         int ry = y + h - 46;
@@ -458,6 +483,7 @@ public class LobbyGui extends DeviceGui {
                 centered(g, "→ [호출]  (초기 1234)", cx, y + 32, 0x9AA7B8);
                 centered(g, masked.isEmpty() ? "_" : masked, cx, y + 50, 0xFFFFFF);
             }
+            case CHG_HO_WAIT, CHG_OLD_WAIT, CHG_NEW_WAIT -> centered(g, "확인 중...", cx, y + 40, 0x9AA7B8);
             case CHG_NEW -> {
                 centered(g, enteredHo + "호 · 새 비밀번호", cx, y + 18, 0xFFD34E);
                 centered(g, "숫자 4~8자리 → [호출]", cx, y + 32, 0x9AA7B8);
