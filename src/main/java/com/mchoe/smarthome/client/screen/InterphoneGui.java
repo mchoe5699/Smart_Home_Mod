@@ -39,26 +39,14 @@ public class InterphoneGui extends DeviceGui {
     @Override
     protected void drawDevice(GuiGraphics g, int mx, int my) {
         int x = left, y = top, w = panelW, h = panelH;
-        g.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0xFF9C9686);
-        g.fill(x, y, x + w, y + h, IVORY);
-
-        // 수화기
+        body(g, tex("interphone"));
         int hx = x + 10, hw = 44;
-        g.fill(hx, y + 14, hx + hw, y + h - 14, 0xFFD8D2C0);
-        g.fill(hx + 6, y + 30, hx + hw - 6, y + h - 30, 0xFFE4DECC);
-        g.fill(hx - 2, y + 10, hx + hw + 2, y + 50, 0xFFCFC8B4);
-        g.fill(hx - 2, y + h - 50, hx + hw + 2, y + h - 10, 0xFFCFC8B4);
-        for (int i = 0; i < 4; i++) g.fill(hx + 10, y + 18 + i * 7, hx + hw - 10, y + 20 + i * 7, 0xFF9C9686);
-        for (int i = 0; i < 4; i++) g.fill(hx + 10, y + h - 44 + i * 7, hx + hw - 10, y + h - 42 + i * 7, 0xFF9C9686);
-        if (!idle()) g.drawString(font, "통화", hx + 10, y + h / 2 - 4, 0xFF2E9E4F, false);
+        if (!idle()) icon(g, I_PHONE, hx + hw / 2 - 8, y + h / 2 - 8, 16, 0x2E9E4F);
 
         int rx = x + 66, rw = w - 76;
-        // 스피커 슬롯
-        for (int i = 0; i < 8; i++) g.fill(rx + 8 + i * 14, y + 14, rx + 12 + i * 14, y + 26, 0xFFB8B2A0);
         // LCD
         int ly = y + 34;
-        g.fill(rx - 1, ly - 1, rx + rw + 1, ly + 41, 0xFF5A6050);
-        int st = status();
+                int st = status();
         boolean blink = st == DeviceLogic.STATUS_RINGING && (ticks / 8) % 2 == 0;
         g.fill(rx, ly, rx + rw, ly + 40, blink ? 0xFFE8D27A : 0xFF9DB596);
         int ink = 0xFF1C2A1C;
@@ -74,14 +62,14 @@ public class InterphoneGui extends DeviceGui {
         keypad(g, rx + 4, y + 86, 36, 22, 5, 0xFFD8D2C0, 0xFF30343A, mx, my);
         // 기능 버튼
         int fy = y + 86 + 4 * 27 + 6, fw = (rw - 6) / 2;
-        button(g, rx, fy, fw, 24, "경비실", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> act("call_guard"));
-        button(g, rx + fw + 6, fy, fw, 24, "통화", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, this::talk);
-        button(g, rx, fy + 30, fw, 24, "문열림", data.getBoolean("entrance") ? 0xFF2E6DB4 : 0xFFB8B2A0, 0xFFFFFFFF, mx, my, () -> act("open_door"));
-        button(g, rx + fw + 6, fy + 30, fw, 24, "종료", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> {
+        buttonIcon(g, rx, fy, fw, 24, I_GUARD, "경비실", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> act("call_guard"));
+        buttonIcon(g, rx + fw + 6, fy, fw, 24, I_CALL, "통화", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, this::talk);
+        buttonIcon(g, rx, fy + 30, fw, 24, I_DOOR, "문열림", data.getBoolean("entrance") ? 0xFF2E6DB4 : 0xFFB8B2A0, 0xFFFFFFFF, mx, my, () -> act("open_door"));
+        buttonIcon(g, rx + fw + 6, fy + 30, fw, 24, I_HANGUP, "종료", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> {
             if (!idle()) act("hangup");
             input = "";
         });
         g.drawString(font, "음성 전용", rx, y + h - 14, 0xFF9C9686, false);
-        button(g, x + w - 20, y + h - 18, 16, 14, "⚙", 0xFFD8D2C0, 0xFF30343A, mx, my, this::openSettings);
+        buttonIcon(g, x + w - 20, y + h - 18, 16, 14, I_GEAR, "", 0xFFD8D2C0, 0xFF30343A, mx, my, this::openSettings);
     }
 }

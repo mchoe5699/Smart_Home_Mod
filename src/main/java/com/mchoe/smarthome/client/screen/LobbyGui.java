@@ -207,47 +207,28 @@ public class LobbyGui extends DeviceGui {
     @Override
     protected void drawDevice(GuiGraphics g, int mx, int my) {
         int x = left, y = top, w = panelW, h = panelH;
-        g.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0xFF4A4E54);
-        for (int i = 0; i < h; i++) {
-            int shade = (i % 3 == 0) ? 6 : (i % 5 == 0 ? -5 : 0);
-            g.fill(x, y + i, x + w, y + i + 1, brighten(STEEL, shade));
-        }
-        g.fill(x, y, x + w, y + 12, 0xFF6C7076);
-        g.fill(x + w / 2 - 14, y + 14, x + w / 2 + 14, y + 34, 0xFF2A2E34);
-        circle(g, x + w / 2, y + 24, 8, 0xFF111214);
-        circle(g, x + w / 2, y + 24, 4, 0xFF1E2B4A);
-        g.fill(x + w / 2 - 2, y + 22, x + w / 2, y + 24, 0xFFA0C0FF);
-        for (int i = 0; i < 9; i++) g.fill(x + w / 2 - 40 + i * 10, y + 38, x + w / 2 - 34 + i * 10, y + 40, 0xFF5A5E64);
-
+        body(g, tex("lobby"));
         int lx = x + 14, ly = y + 46, lw = w - 28, lh = 84;
-        g.fill(lx - 2, ly - 2, lx + lw + 2, ly + lh + 2, 0xFF2A2E34);
-        g.fill(lx, ly, lx + lw, ly + lh, 0xFF0B1A2E);
         if (admin != Admin.NONE) drawAdminLcd(g, lx, ly, lw, lh);
         else drawLcd(g, lx, ly, lw, lh);
 
         int ky = y + 142;
         keypad(g, x + 14, ky, 36, 26, 6, 0xFF2A2E34, 0xFFE8ECF0, mx, my);
         int fx = x + 14 + 3 * 42 + 4, fw = w - (fx - x) - 14;
-        button(g, fx, ky, fw, 26, admin != Admin.NONE ? "확인" : "호출", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, this::pressCall);
-        button(g, fx, ky + 32, fw, 26, "경비실", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> {
+        buttonIcon(g, fx, ky, fw, 26, admin != Admin.NONE ? -1 : I_CALL, admin != Admin.NONE ? "확인" : "", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, this::pressCall);
+        buttonIcon(g, fx, ky + 32, fw, 26, I_GUARD, "", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> {
             if (admin == Admin.NONE) act("call_guard");
         });
         button(g, fx, ky + 64, fw, 26, "취소", 0xFFC98A2E, 0xFFFFFFFF, mx, my, this::cancel);
-        button(g, fx, ky + 96, fw, 26, pwMode ? "열쇠●" : "열쇠", 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> {
+        buttonIcon(g, fx, ky + 96, fw, 26, I_KEY, "", pwMode ? 0xFFC98A2E : 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> {
             if (admin != Admin.NONE) return;
             pwMode = !pwMode;
             input = "";
         });
 
         int ry = y + h - 46;
-        g.fill(x + 14, ry, x + w - 14, ry + 34, 0xFF2A2E34);
-        g.fill(x + 15, ry + 1, x + w - 15, ry + 33, 0xFF1A1D22);
-        for (int i = 0; i < 3; i++) {
-            int r = 4 + i * 4;
-            g.fill(x + 30 + r, ry + 17 - r, x + 31 + r, ry + 17 + r, 0xFF4C9AE5);
-        }
-        g.drawString(font, "RF 카드", x + 52, ry + 6, 0xFF9AD0FF, false);
-        g.drawString(font, "출입카드를 들고 우클릭", x + 52, ry + 19, 0xFF707880, false);
+        g.drawString(font, "RF 카드", x + 56, ry + 6, 0xFF9AD0FF, false);
+        g.drawString(font, "출입카드를 들고 우클릭", x + 56, ry + 19, 0xFF707880, false);
 
         button(g, x + w - 24, y + 1, 22, 10, "⚙", admin != Admin.NONE ? 0xFFC98A2E : 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> {
             input = "";

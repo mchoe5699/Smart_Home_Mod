@@ -79,40 +79,34 @@ public class VideophoneGui extends DeviceGui {
     @Override
     protected void drawDevice(GuiGraphics g, int mx, int my) {
         int x = left, y = top, w = panelW, h = panelH;
-        g.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0xFF9A9E9F);
-        g.fill(x, y, x + w, y + h, BODY);
-        g.fill(x, y, x + w, y + 2, 0xFFF4F4F2);
-        g.fill(x, y + h - 2, x + w, y + h, 0xFFC8C8C4);
+        body(g, tex("videophone"));
 
         // 화면
         int sx = x + 14, sy = y + 14, sw = 222, sh = 166;
-        g.fill(sx - 3, sy - 3, sx + sw + 3, sy + sh + 3, 0xFF9A9E9F);
-        g.fill(sx, sy, sx + sw, sy + sh, 0xFF050607);
         drawScreen(g, sx, sy, sw, sh, mx, my);
 
         // 스피커 · 상표
-        for (int i = 0; i < 14; i++) g.fill(sx + 40 + i * 10, y + h - 20, sx + 46 + i * 10, y + h - 18, 0xFF8A8E90);
-        g.drawString(font, "VIDEO PHONE", sx, y + h - 14, 0xFF9A9E9F, false);
+        g.drawString(font, "VIDEO PHONE", x + w - 76, y + h - 18, 0xFFB0B4B6, false);
 
         // 오른쪽 버튼
         int bx = x + w - 80, bw = 66, by = y + 14, bh = 24, gap = 6;
         int st = status();
-        button(g, bx, by, bw, bh, "모니터", monitor ? 0xFF2E7DD7 : 0xFFCFCFCB, monitor ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
+        buttonIcon(g, bx, by, bw, bh, I_CCTV, "모니터", monitor ? 0xFF2E7DD7 : 0xFFCFCFCB, monitor ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
             if (idle()) {
                 monitor = !monitor;
                 intercom = false;
             }
         });
         by += bh + gap;
-        button(g, bx, by, bw, bh, "통화", st == DeviceLogic.STATUS_RINGING ? 0xFF2E9E4F : 0xFFCFCFCB,
+        buttonIcon(g, bx, by, bw, bh, I_CALL, "통화", st == DeviceLogic.STATUS_RINGING ? 0xFF2E9E4F : 0xFFCFCFCB,
                 st == DeviceLogic.STATUS_RINGING ? 0xFFFFFFFF : 0xFF30343A, mx, my, this::talk);
         by += bh + gap;
-        button(g, bx, by, bw, bh, "문열림", data.getBoolean("entrance") ? 0xFF2E6DB4 : 0xFFCFCFCB,
+        buttonIcon(g, bx, by, bw, bh, I_DOOR, "문열림", data.getBoolean("entrance") ? 0xFF2E6DB4 : 0xFFCFCFCB,
                 data.getBoolean("entrance") ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> act("open_door"));
         by += bh + gap;
-        button(g, bx, by, bw, bh, "경비실", 0xFFCFCFCB, 0xFF30343A, mx, my, () -> act("call_guard"));
+        buttonIcon(g, bx, by, bw, bh, I_GUARD, "경비실", 0xFFCFCFCB, 0xFF30343A, mx, my, () -> act("call_guard"));
         by += bh + gap;
-        button(g, bx, by, bw, bh, "인터폰", intercom ? 0xFF2E9E4F : 0xFFCFCFCB, intercom ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
+        buttonIcon(g, bx, by, bw, bh, I_PHONE, "인터폰", intercom ? 0xFF2E9E4F : 0xFFCFCFCB, intercom ? 0xFFFFFFFF : 0xFF30343A, mx, my, () -> {
             if (idle()) {
                 intercom = !intercom;
                 monitor = false;
@@ -120,7 +114,7 @@ public class VideophoneGui extends DeviceGui {
             }
         });
         by += bh + gap;
-        button(g, bx, by, bw, bh, "종료", 0xFFCFCFCB, 0xFFB43A3A, mx, my, () -> {
+        buttonIcon(g, bx, by, bw, bh, I_HANGUP, "종료", 0xFFCFCFCB, 0xFFB43A3A, mx, my, () -> {
             if (!idle()) act("hangup");
             monitor = false;
             intercom = false;

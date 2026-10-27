@@ -72,21 +72,19 @@ public class WallpadGui extends DeviceGui {
         }
     }
 
+    private static final net.minecraft.resources.ResourceLocation BODY = tex("wallpad");
+    private static final net.minecraft.resources.ResourceLocation SCREEN_BG = tex("wallpad_bg");
+
     @Override
     protected void drawDevice(GuiGraphics g, int mx, int my) {
         int x = left, y = top, w = panelW, h = panelH;
-        // 유리 전면 본체
-        g.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0xFF3A3F46);
-        g.fill(x, y, x + w, y + h, GLASS);
-        g.fill(x, y, x + w, y + 1, 0xFF2E3238);
-        g.drawString(font, "HOME NETWORK", x + w / 2 - font.width("HOME NETWORK") / 2, y + h - 12, 0xFF3A4654, false);
+        body(g, BODY);
         circle(g, x + w - 14, y + h - 8, 2, idle() ? 0xFF2E7DD7 : 0xFF4CD27A);
 
         int sx = x + 12, sy = y + 10, sw = w - 24, sh = h - 26;
-        g.fill(sx, sy, sx + sw, sy + sh, BG);
+        g.blit(SCREEN_BG, sx, sy, 0, 0, sw, sh, sw, sh);
         pwBox.visible = page == Page.SETTINGS && idle();
 
-        // 호출/통화 중이면 통화 화면
         if (!idle()) {
             drawCall(g, sx, sy, sw, sh, mx, my);
             return;
@@ -107,38 +105,147 @@ public class WallpadGui extends DeviceGui {
         }
     }
 
+    private static int iconOf(Page p) {
+        return switch (p) {
+            case VISITOR -> I_CAMERA;
+            case LIGHT -> I_BULB;
+            case HEAT -> I_FLAME;
+            case GAS -> I_GAS;
+            case VENT -> I_FAN;
+            case ELEVATOR -> I_ELEVATOR;
+            case AWAY -> I_AWAY;
+            case GUARD -> I_GUARD;
+            case INTERCOM -> I_PHONE;
+            case LOG -> I_LOG;
+            case NOTICE -> I_NOTICE;
+            case SETTINGS -> I_GEAR;
+            default -> I_BUILDING;
+        };
+    }
+
+    private static int colorOf(Page p) {
+        return switch (p) {
+            case VISITOR -> 0x5AB0FF;
+            case LIGHT -> 0xFFD34E;
+            case HEAT -> 0xFF7A4E;
+            case GAS -> 0x8AD04C;
+            case VENT -> 0x4CD2C8;
+            case ELEVATOR -> 0xB49AFF;
+            case AWAY -> 0xFFB45A;
+            case GUARD -> 0x6AA8FF;
+            case INTERCOM -> 0x4CD27A;
+            case LOG -> 0xD0B48A;
+            case NOTICE -> 0xFF8AC8;
+            default -> 0xC8D0DA;
+        };
+    }
+
     private void drawStatusBar(GuiGraphics g, int x, int y, int w, int mx, int my) {
-        g.fill(x, y, x + w, y + 16, 0xFF0A1422);
+        g.fillGradient(x, y, x + w, y + 16, 0xC0081020, 0x80081020);
         if (page != Page.HOME) {
-            button(g, x + 2, y + 2, 40, 12, "◀ 홈", 0xFF1E4D8C, 0xFFFFFFFF, mx, my, () -> page = Page.HOME);
-            g.drawString(font, page.title, x + 48, y + 4, 0xFFFFFF, false);
+            buttonIcon(g, x + 2, y + 2, 42, 12, I_BUILDING, "홈", 0xFF1E4D8C, 0xFFFFFF, mx, my, () -> page = Page.HOME);
+            icon(g, iconOf(page), x + 50, y + 2, 12, colorOf(page));
+            g.drawString(font, page.title, x + 65, y + 4, 0xFFFFFF, false);
         } else {
+            icon(g, I_BUILDING, x + 4, y + 2, 12, 0x9AD0FF);
             String cx = data.getString("complex");
-            g.drawString(font, cx.isEmpty() ? "단지 구획 밖" : cx, x + 6, y + 4, cx.isEmpty() ? 0xFF6B6B : 0x9AD0FF, false);
+            g.drawString(font, cx.isEmpty() ? "단지 구획 밖" : cx, x + 19, y + 4, cx.isEmpty() ? 0xFF6B6B : 0x9AD0FF, false);
         }
         String right = DeviceLogic.num(data.getInt("dong")) + "동 " + DeviceLogic.num(data.getInt("ho")) + "호   " + clock();
-        g.drawString(font, right, x + w - 6 - font.width(right), y + 4, 0xFFFFFF, false);
-        if (data.getBoolean("away")) g.drawString(font, "외출", x + w - 6 - font.width(right) - 30, y + 4, 0xFFD34E, false);
+        int rx = x + w - 6 - font.width(right);
+        g.drawString(font, right, rx, y + 4, 0xFFFFFF, false);
+        if (data.getBoolean("away")) {
+            icon(g, I_AWAY, rx - 42, y + 2, 12, 0xFFD34E);
+            g.drawString(font, "외출", rx - 28, y + 4, 0xFFD34E, false);
+        }
+        if (!data.getString("notice").isEmpty()) icon(g, I_NOTICE, rx - (data.getBoolean("away") ? 58 : 18), y + 2, 12, 0xFF8AC8);
     }
 
     private void drawHome(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
+        // 왼쪽 정보 패널: 큰 시계 · 세대 · 상태
+        int pw = 112;
+        card(g, x + 6, y + 4, pw, h - 10, 0x30000000);
+        bigText(g, clock(), x + 6 + pw / 2, y + 14, 2.6f, 0xFFFFFF, true);
+        long day = minecraft.level == null ? 0 : minecraft.level.getDayTime() / 24000L + 1;
+        centered(g, day + "일째", x + 6 + pw / 2, y + 42, 0x9AD0FF);
+        g.fill(x + 14, y + 56, x + pw - 2, y + 57, 0x40FFFFFF);
+        g.drawString(font, DeviceLogic.num(data.getInt("dong")) + "동 " + DeviceLogic.num(data.getInt("ho")) + "호", x + 14, y + 64, 0xFFFFFF, false);
+        g.drawString(font, "관할경비실 " + DeviceLogic.num(data.getInt("guard")), x + 14, y + 76, 0x9AA7B8, false);
+        int sy = y + 94;
+        statusLine(g, x + 14, sy, I_BULB, "조명", count(ControlKind.LIGHT, true) + "/" + count(ControlKind.LIGHT, false), 0xFFD34E);
+        statusLine(g, x + 14, sy + 14, I_GAS, "가스", count(ControlKind.GAS_VALVE, true) > 0 ? "열림" : "잠김",
+                count(ControlKind.GAS_VALVE, true) > 0 ? 0xFF6B6B : 0x4CD27A);
+        statusLine(g, x + 14, sy + 28, I_FAN, "환기", count(ControlKind.VENTILATION, true) > 0 ? "가동" : "정지", 0x4CD2C8);
+        statusLine(g, x + 14, sy + 42, I_AWAY, "외출", data.getBoolean("away") ? "설정" : "해제", 0xFFB45A);
+        String notice = data.getString("notice");
+        if (!notice.isEmpty()) {
+            card(g, x + 10, y + h - 30, pw - 8, 18, 0x40FF8AC8);
+            icon(g, I_NOTICE, x + 13, y + h - 27, 12, 0xFFFFFF);
+            fitText(g, notice, x + 28, y + h - 25, pw - 30, 0xFFFFFF);
+            touch(x + 10, y + h - 30, pw - 8, 18, () -> page = Page.NOTICE);
+        }
+
+        // 오른쪽 메뉴 타일
         Page[] tiles = {Page.VISITOR, Page.LIGHT, Page.HEAT, Page.GAS, Page.VENT, Page.ELEVATOR,
                 Page.AWAY, Page.GUARD, Page.INTERCOM, Page.LOG, Page.NOTICE, Page.SETTINGS};
-        int[] colors = {0xFF2E7DD7, 0xFFE5A84D, 0xFFE5484D, 0xFF6C9A2E, 0xFF2EA8A0, 0xFF7A5AD0,
-                0xFF4C5866, 0xFF2E6DB4, 0xFF2E9E4F, 0xFF8A6A3A, 0xFFB45A8A, 0xFF5A6470};
-        int cols = 4, rows = 3, gap = 6;
-        int tw = (w - gap * (cols + 1)) / cols, th = (h - gap * (rows + 1)) / rows;
+        int gx = x + pw + 12, gw = x + w - gx - 6;
+        int cols = 4, rows = 3, gap = 5;
+        int tw = (gw - gap * (cols - 1)) / cols, th = (h - 10 - gap * (rows - 1)) / rows;
         for (int i = 0; i < tiles.length; i++) {
-            int tx = x + gap + (i % cols) * (tw + gap), ty = y + gap + (i / cols) * (th + gap);
+            int tx = gx + (i % cols) * (tw + gap), ty = y + 4 + (i / cols) * (th + gap);
             Page p = tiles[i];
             boolean hover = mx >= tx && mx < tx + tw && my >= ty && my < ty + th;
-            g.fill(tx, ty, tx + tw, ty + th, hover ? brighten(TILE, 18) : TILE);
-            g.fill(tx + 6, ty + 6, tx + 22, ty + 22, colors[i]);
-            g.drawString(font, p.title, tx + 6, ty + th - 14, 0xFFFFFF, false);
+            card(g, tx, ty, tw, th, hover ? 0x60FFFFFF : 0x28FFFFFF);
+            int c = colorOf(p);
+            rrect(g, tx + tw / 2 - 13, ty + 6, 26, 26, 0xFF000000 | darken(c, 120) & 0xFFFFFF | 0xC0000000);
+            icon(g, iconOf(p), tx + tw / 2 - 10, ty + 9, 20, c);
+            centered(g, p.title, tx + tw / 2, ty + th - 22, 0xFFFFFF);
             String sub = tileSub(p);
-            if (!sub.isEmpty()) g.drawString(font, font.plainSubstrByWidth(sub, tw - 30), tx + 26, ty + 10, 0x9AA7B8, false);
+            if (!sub.isEmpty()) centered(g, font.plainSubstrByWidth(sub, tw - 4), tx + tw / 2, ty + th - 11, 0x9AA7B8);
             touch(tx, ty, tw, th, () -> page = p);
         }
+    }
+
+    private void statusLine(GuiGraphics g, int x, int y, int ic, String label, String value, int color) {
+        icon(g, ic, x, y, 10, color);
+        g.drawString(font, label, x + 14, y + 1, 0xC8D0DA, false);
+        g.drawString(font, value, x + 92 - font.width(value), y + 1, color, false);
+    }
+
+    private void drawCall(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
+        int st = status();
+        boolean flash = st == DeviceLogic.STATUS_RINGING && (ticks / 8) % 2 == 0;
+        g.fillGradient(x, y, x + w, y + 16, flash ? 0xFF8A2A3A : 0xC0081020, flash ? 0xFF5A1A2A : 0x80081020);
+        icon(g, st == DeviceLogic.STATUS_RINGING ? I_CAMERA : I_PHONE, x + 4, y + 2, 12, 0xFFFFFF);
+        g.drawString(font, statusText() + " · " + data.getString("peer"), x + 19, y + 4, 0xFFFFFF, false);
+        g.drawString(font, clock(), x + w - 6 - font.width(clock()), y + 4, 0xFFFFFF, false);
+        int vx = x + 6, vy = y + 22, vw = 252, vh = 192;
+        rrect(g, vx - 2, vy - 2, vw + 4, vh + 4, 0xFF000000);
+        if (!drawFeed(g, camPos(), vx, vy, vw, vh)) {
+            g.fillGradient(vx, vy, vx + vw, vy + vh, 0xFF14202E, 0xFF0A1018);
+            icon(g, I_PHONE, vx + vw / 2 - 20, vy + vh / 2 - 36, 40, 0x4CD27A);
+            centered(g, "음성 통화", vx + vw / 2, vy + vh / 2 + 10, 0x9AA7B8);
+            centered(g, data.getString("peer"), vx + vw / 2, vy + vh / 2 + 24, 0xFFFFFF);
+        }
+        int bx = vx + vw + 10, bw = x + w - bx - 6;
+        int by = vy;
+        g.drawString(font, font.plainSubstrByWidth(data.getString("peer"), bw), bx, by, 0xFFFFFF, false);
+        g.drawString(font, statusText(), bx, by + 11, st == DeviceLogic.STATUS_CONNECTED ? 0x4CD27A : 0xFFD34E, false);
+        by += 28;
+        if (st == DeviceLogic.STATUS_RINGING) {
+            buttonIcon(g, bx, by, bw, 36, I_CALL, "통화", 0xFF2E9E4F, 0xFFFFFF, mx, my, () -> act("answer"));
+            by += 42;
+            buttonIcon(g, bx, by, bw, 28, I_HANGUP, "거절", 0xFFB43A3A, 0xFFFFFF, mx, my, () -> act("hangup"));
+            by += 34;
+        } else {
+            buttonIcon(g, bx, by, bw, 36, I_HANGUP, st == DeviceLogic.STATUS_CALLING ? "취소" : "종료", 0xFFB43A3A, 0xFFFFFF, mx, my, () -> act("hangup"));
+            by += 42;
+        }
+        if (data.getBoolean("entrance")) {
+            buttonIcon(g, bx, by, bw, 36, I_DOOR, "문열림", 0xFF2E6DB4, 0xFFFFFF, mx, my, () -> act("open_door"));
+            by += 42;
+        }
+        if (st == DeviceLogic.STATUS_CONNECTED) g.drawString(font, "대화창 →", bx, by + 4, 0x9AD0FF, false);
     }
 
     private String tileSub(Page p) {
@@ -162,36 +269,6 @@ public class WallpadGui extends DeviceGui {
             if (t.getString("kind").equals(kind.id) && (!onlyOn || t.getBoolean("on"))) n++;
         }
         return n;
-    }
-
-    private void drawCall(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
-        int st = status();
-        g.fill(x, y, x + w, y + 16, st == DeviceLogic.STATUS_RINGING && (ticks / 8) % 2 == 0 ? 0xFF6A1F2A : 0xFF0A1422);
-        g.drawString(font, statusText() + " · " + data.getString("peer"), x + 6, y + 4, 0xFFFFFF, false);
-        g.drawString(font, clock(), x + w - 6 - font.width(clock()), y + 4, 0xFFFFFF, false);
-        int vx = x + 6, vy = y + 22, vw = 240, vh = 180;
-        g.fill(vx - 1, vy - 1, vx + vw + 1, vy + vh + 1, 0xFF000000);
-        if (!drawFeed(g, camPos(), vx, vy, vw, vh)) {
-            g.fill(vx, vy, vx + vw, vy + vh, 0xFF101820);
-            centered(g, "음성 통화", vx + vw / 2, vy + vh / 2 - 10, 0x9AA7B8);
-            centered(g, data.getString("peer"), vx + vw / 2, vy + vh / 2 + 4, 0xFFFFFF);
-        }
-        int bx = vx + vw + 10, bw = x + w - bx - 6;
-        int by = vy;
-        if (st == DeviceLogic.STATUS_RINGING) {
-            button(g, bx, by, bw, 32, "통화", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> act("answer"));
-            by += 38;
-            button(g, bx, by, bw, 24, "거절", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> act("hangup"));
-            by += 30;
-        } else {
-            button(g, bx, by, bw, 32, st == DeviceLogic.STATUS_CALLING ? "취소" : "종료", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> act("hangup"));
-            by += 38;
-        }
-        if (data.getBoolean("entrance")) {
-            button(g, bx, by, bw, 32, "문열림", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> act("open_door"));
-            by += 38;
-        }
-        if (st == DeviceLogic.STATUS_CONNECTED) g.drawString(font, "대화창 →", bx, by + 4, 0x9AD0FF, false);
     }
 
     private void drawVisitor(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
@@ -235,7 +312,8 @@ public class WallpadGui extends DeviceGui {
         } else if (kind == ControlKind.GAS_VALVE) {
             button(g, x + w - 96, ry, 90, 18, "전체 잠금", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> act("gas_close"));
         }
-        g.drawString(font, kind.korean + " 제어", x + 8, ry + 5, 0xFFFFFF, false);
+        icon(g, iconOf(page), x + 8, ry + 1, 16, colorOf(page));
+        g.drawString(font, kind.korean + " 제어", x + 28, ry + 5, 0xFFFFFF, false);
         ry += 26;
         ListTag l = data.getList("controls", Tag.TAG_COMPOUND);
         int shown = 0;
@@ -245,8 +323,8 @@ public class WallpadGui extends DeviceGui {
             shown++;
             long p = t.getLong("pos");
             boolean on = t.getBoolean("on");
-            g.fill(x + 6, ry, x + w - 6, ry + 22, 0xFF13263F);
-            circle(g, x + 16, ry + 11, 4, on ? (kind == ControlKind.GAS_VALVE ? 0xFFE5484D : 0xFFFFD34E) : 0xFF3A4654);
+            card(g, x + 6, ry, w - 12, 22, 0x30FFFFFF);
+            icon(g, iconOf(page), x + 10, ry + 3, 16, on ? (kind == ControlKind.GAS_VALVE ? 0xFF6B6B : colorOf(page)) : 0x5A6470);
             g.drawString(font, t.getString("room"), x + 28, ry + 7, 0xFFFFFF, false);
             int bx = x + w - 12;
             switch (kind) {
@@ -297,7 +375,7 @@ public class WallpadGui extends DeviceGui {
     private void drawElevator(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
         int n = count(ControlKind.ELEVATOR_LINK, false);
         centered(g, "엘리베이터를 우리 층으로 부릅니다", x + w / 2, y + 30, 0xFFFFFF);
-        button(g, x + w / 2 - 70, y + 60, 140, 60, "▼ ▲  호출", 0xFF7A5AD0, 0xFFFFFFFF, mx, my, () -> act("elevator"));
+        buttonIcon(g, x + w / 2 - 70, y + 60, 140, 60, I_ELEVATOR, "엘리베이터 호출", 0xFF7A5AD0, 0xFFFFFFFF, mx, my, () -> act("elevator"));
         centered(g, n == 0 ? "연결된 엘리베이터 호출 연동기 없음" : "연동기 " + n + "대", x + w / 2, y + 134, n == 0 ? 0xFFD34E : 0x9AA7B8);
         centered(g, "연동기는 엘리베이터 호출 버튼 옆에 두면 레드스톤 신호를 보냅니다", x + w / 2, y + 150, 0x707880);
     }
@@ -305,7 +383,7 @@ public class WallpadGui extends DeviceGui {
     private void drawAway(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
         boolean away = data.getBoolean("away");
         centered(g, away ? "외출모드 설정됨" : "외출모드 해제됨", x + w / 2, y + 26, away ? 0xFFD34E : 0x4CD27A);
-        button(g, x + w / 2 - 80, y + 50, 160, 50, away ? "외출 해제" : "외출 설정", away ? 0xFF4C5866 : 0xFFC98A2E, 0xFFFFFFFF, mx, my, () -> {
+        buttonIcon(g, x + w / 2 - 80, y + 50, 160, 50, I_AWAY, away ? "외출 해제" : "외출 설정", away ? 0xFF4C5866 : 0xFFC98A2E, 0xFFFFFFFF, mx, my, () -> {
             CompoundTag t = new CompoundTag();
             t.putBoolean("on", !away);
             act("away", t);
@@ -317,7 +395,7 @@ public class WallpadGui extends DeviceGui {
         centered(g, "관할 경비실 " + DeviceLogic.num(data.getInt("guard")), x + w / 2, y + 26, 0xFFFFFF);
         centered(g, data.getBoolean("myGuardExists") ? "관할 경비실기 연결됨" : "관할 경비실기 없음 · 단지 경비실로 연결",
                 x + w / 2, y + 40, data.getBoolean("myGuardExists") ? 0x4CD27A : 0xFFD34E);
-        button(g, x + w / 2 - 80, y + 62, 160, 50, "경비실 호출", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> act("call_guard"));
+        buttonIcon(g, x + w / 2 - 80, y + 62, 160, 50, I_GUARD, "경비실 호출", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> act("call_guard"));
     }
 
     private void drawIntercom(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
@@ -326,7 +404,7 @@ public class WallpadGui extends DeviceGui {
         g.drawString(font, shown, x + 16, y + 17, input.isEmpty() ? 0x707880 : 0x9AD0FF, false);
         keypad(g, x + 10, y + 40, 48, 30, 6, 0xFF1E3A5A, 0xFFFFFFFF, mx, my);
         int bx = x + 190, bw = w - 200;
-        button(g, bx, y + 40, bw, 34, "호출", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> onKey('\n'));
+        buttonIcon(g, bx, y + 40, bw, 34, I_CALL, "호출", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> onKey('\n'));
         button(g, bx, y + 80, bw, 24, "지우기", 0xFF4C5866, 0xFFFFFFFF, mx, my, () -> input = "");
         g.drawString(font, "같은 관할경비실 세대와 통화", bx, y + 116, 0x9AA7B8, false);
         g.drawString(font, "호수만 누르면 같은 동", bx, y + 128, 0x707880, false);
@@ -361,7 +439,7 @@ public class WallpadGui extends DeviceGui {
         g.drawString(font, "기기 번호", x + 10, y + 10, 0xFFD34E, false);
         g.drawString(font, "관할경비실 " + DeviceLogic.num(data.getInt("guard")) + " · " + DeviceLogic.num(data.getInt("dong")) + "동 "
                 + DeviceLogic.num(data.getInt("ho")) + "호", x + 10, y + 24, 0xFFFFFF, false);
-        button(g, x + 10, y + 38, 200, 20, "관할경비실·세대번호 설정", 0xFF1E4D8C, 0xFFFFFFFF, mx, my, this::openSettings);
+        buttonIcon(g, x + 10, y + 38, 200, 20, I_GEAR, "관할경비실·세대번호 설정", 0xFF1E4D8C, 0xFFFFFFFF, mx, my, this::openSettings);
 
         g.drawString(font, "세대 비밀번호 (공동현관 출입용)", x + 10, y + 74, 0xFFD34E, false);
         g.drawString(font, data.getBoolean("hasPw") ? "설정됨" : "설정 안 됨", x + 10, y + 88, data.getBoolean("hasPw") ? 0x4CD27A : 0x9AA7B8, false);

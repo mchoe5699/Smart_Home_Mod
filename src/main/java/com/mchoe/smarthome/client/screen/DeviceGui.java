@@ -32,6 +32,15 @@ import java.util.UUID;
 public abstract class DeviceGui extends Screen implements DataScreen {
     protected static final int CHAT_W = 176;
 
+    // GUI 텍스처
+    public static final ResourceLocation ICONS = tex("icons");
+    public static final int I_CAMERA = 0, I_BULB = 1, I_FLAME = 2, I_GAS = 3, I_FAN = 4, I_ELEVATOR = 5, I_AWAY = 6, I_GUARD = 7,
+            I_PHONE = 8, I_LOG = 9, I_NOTICE = 10, I_GEAR = 11, I_DOOR = 12, I_CALL = 13, I_HANGUP = 14, I_KEY = 15, I_CCTV = 16, I_BUILDING = 17;
+
+    public static ResourceLocation tex(String name) {
+        return new ResourceLocation(com.mchoe.smarthome.SmartHomeMod.MODID, "textures/gui/" + name + ".png");
+    }
+
     protected final BlockPos pos;
     protected CompoundTag data;
     protected DeviceType type;
@@ -152,10 +161,11 @@ public abstract class DeviceGui extends Screen implements DataScreen {
 
     private void drawChat(GuiGraphics g) {
         int x = left + panelW + 8, y = top, w = CHAT_W, h = panelH;
-        g.fill(x - 1, y - 1, x + w + 1, y + h + 1, 0xFF3A3F46);
-        g.fill(x, y, x + w, y + h, 0xF0101418);
-        g.fill(x, y, x + w, y + 16, 0xFF1E4D8C);
-        g.drawString(font, "통화 대화", x + 6, y + 4, 0xFFFFFF, false);
+        rrect(g, x - 1, y - 1, w + 2, h + 2, 0xFF3A3F46);
+        g.fillGradient(x, y, x + w, y + h, 0xF0141C28, 0xF00A0E14);
+        g.fillGradient(x, y, x + w, y + 16, 0xFF2B6CB0, 0xFF1E4D8C);
+        icon(g, I_PHONE, x + 4, y + 2, 12, 0xFFFFFF);
+        g.drawString(font, "통화 대화", x + 19, y + 4, 0xFFFFFF, false);
         String peer = data.getString("peer");
         g.drawString(font, font.plainSubstrByWidth(peer, w - 70), x + w - 4 - Math.min(font.width(peer), w - 70), y + 4, 0x9AD0FF, false);
 
@@ -172,21 +182,73 @@ public abstract class DeviceGui extends Screen implements DataScreen {
         if (msgs.isEmpty()) g.drawString(font, "아래에 입력하면 상대에게 전달됩니다", x + 5, y + 20, 0x707880, false);
     }
 
-    /** 실물 버튼. 누르면 action 실행 */
+    /** 실물 버튼(둥근 모서리 · 위아래 그라데이션 · 눌림 그림자). 누르면 action 실행 */
     protected void button(GuiGraphics g, int x, int y, int w, int h, String label, int color, int textColor, int mx, int my, Runnable action) {
-        boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;
-        int base = hover ? brighten(color, 22) : color;
-        g.fill(x, y, x + w, y + h, darken(base, 50));
-        g.fill(x, y, x + w - 1, y + h - 1, brighten(base, 30));
-        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, base);
-        int tw = font.width(label);
-        if (tw > w - 4) {
-            String cut = font.plainSubstrByWidth(label, w - 4);
-            g.drawString(font, cut, x + (w - font.width(cut)) / 2, y + (h - 8) / 2, textColor, false);
-        } else {
-            g.drawString(font, label, x + (w - tw) / 2, y + (h - 8) / 2, textColor, false);
+        buttonIcon(g, x, y, w, h, -1, label, color, textColor, mx, my, action);
+    }
+
+    /** 아이콘이 있는 버튼 (icon < 0 이면 글자만) */
+    protected void buttonIcon(GuiGraphics g, int x, int y, int w, int h, int icon, String label, int color, int textColor, int mx, int my, Runnable action) {
+        boolean hover = action != null && mx >= x && mx < x + w && my >= y && my < y + h;
+        int base = hover ? brighten(color, 18) : color;
+        // 그림자
+        rrect(g, x, y + 1, w, h, 0x50000000);
+        // 테두리 + 그라데이션 몸통
+        rrect(g, x, y, w, h, darken(base, 45));
+        g.fillGradient(x + 1, y + 1, x + w - 1, y + h - 1, brighten(base, 26), darken(base, 10));
+        g.fill(x + 2, y + 1, x + w - 2, y + 2, brighten(base, 55) & 0x80FFFFFF | 0x60000000);
+        int tw = label.isEmpty() ? 0 : Math.min(font.width(label), w - 6);
+        int iconSize = icon >= 0 ? Math.min(16, h - 4) : 0;
+        int gap = icon >= 0 && tw > 0 ? 3 : 0;
+        int total = iconSize + gap + tw;
+        int cx = x + (w - total) / 2;
+        if (icon >= 0) {
+            icon(g, icon, cx, y + (h - iconSize) / 2, iconSize, textColor);
+            cx += iconSize + gap;
+        }
+        if (tw > 0) {
+            String cut = font.width(label) > w - 6 ? font.plainSubstrByWidth(label, w - 6) : label;
+            g.drawString(font, cut, cx, y + (h - 8) / 2 + 1, textColor, false);
         }
         if (action != null) hits.add(new Hit(x, y, w, h, action));
+    }
+
+    /** 모서리를 1픽셀 깎은 사각형 */
+    protected static void rrect(GuiGraphics g, int x, int y, int w, int h, int color) {
+        g.fill(x + 1, y, x + w - 1, y + h, color);
+        g.fill(x, y + 1, x + 1, y + h - 1, color);
+        g.fill(x + w - 1, y + 1, x + w, y + h - 1, color);
+    }
+
+    /** 반투명 카드(타일) */
+    protected static void card(GuiGraphics g, int x, int y, int w, int h, int color) {
+        rrect(g, x, y, w, h, color);
+        g.fill(x + 1, y, x + w - 1, y + 1, 0x30FFFFFF);
+    }
+
+    /** 아이콘 (24px 시트에서 size 크기로, color 로 물들임) */
+    protected static void icon(GuiGraphics g, int index, int x, int y, int size, int color) {
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(((color >> 16) & 255) / 255f, ((color >> 8) & 255) / 255f, (color & 255) / 255f, 1f);
+        g.blit(ICONS, x, y, size, size, (index % 8) * 24, (index / 8) * 24, 24, 24, 192, 72);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.disableBlend();
+    }
+
+    /** 기기 본체 이미지 */
+    protected void body(GuiGraphics g, ResourceLocation texture) {
+        RenderSystem.enableBlend();
+        g.blit(texture, left, top, 0, 0, panelW, panelH, panelW, panelH);
+        RenderSystem.disableBlend();
+    }
+
+    /** 큰 글씨 */
+    protected void bigText(GuiGraphics g, String s, int x, int y, float scale, int color, boolean center) {
+        g.pose().pushPose();
+        g.pose().translate(x, y, 0);
+        g.pose().scale(scale, scale, 1);
+        g.drawString(font, s, center ? -font.width(s) / 2 : 0, 0, color, false);
+        g.pose().popPose();
     }
 
     /** 화면 터치 영역(그리기 없이) */

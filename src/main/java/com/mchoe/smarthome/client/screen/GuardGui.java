@@ -34,24 +34,20 @@ public class GuardGui extends DeviceGui {
     @Override
     protected void drawDevice(GuiGraphics g, int mx, int my) {
         int x = left, y = top, w = panelW, h = panelH;
-        g.fill(x - 2, y - 2, x + w + 2, y + h + 2, 0xFF2A2E34);
-        g.fill(x, y, x + w, y + h, 0xFF55595F);
-        g.fill(x, y + 172, x + w, y + h, 0xFF4A4E54);
-        g.drawString(font, "경비실 " + DeviceLogic.num(data.getInt("guard")), x + 8, y + 4, 0xFFFFFF, false);
+        body(g, tex("guard"));
+        icon(g, I_GUARD, x + 8, y + 3, 10, 0xFFFFFF);
+        g.drawString(font, "경비실 " + DeviceLogic.num(data.getInt("guard")), x + 21, y + 4, 0xFFFFFF, false);
         String cx = data.getString("complex");
         g.drawString(font, cx.isEmpty() ? "단지 구획 밖" : cx, x + 90, y + 4, cx.isEmpty() ? 0xFF6B6B : 0x9AD0FF, false);
         g.drawString(font, clock(), x + w - 8 - font.width(clock()), y + 4, 0xFFFFFF, false);
 
         // 모니터
         int mxp = x + 8, myp = y + 16, mw = 250, mh = 150;
-        g.fill(mxp - 3, myp - 3, mxp + mw + 3, myp + mh + 3, 0xFF15171A);
-        g.fill(mxp, myp, mxp + mw, myp + mh, 0xFF050607);
         drawMonitor(g, mxp, myp, mw, mh);
 
         // 호출 대기 목록
         int lx = x + 268, ly = y + 16, lw = w - 276;
-        g.fill(lx, ly, lx + lw, ly + 150, 0xFF0B1A2E);
-        g.fill(lx, ly, lx + lw, ly + 14, 0xFF6A3E3E);
+        g.fillGradient(lx, ly, lx + lw, ly + 14, 0xFF8A4E4E, 0xFF6A3E3E);
         ListTag inc = data.getList("incoming", Tag.TAG_COMPOUND);
         g.drawString(font, "호출 대기 " + inc.size() + "건", lx + 4, ly + 3, 0xFFFFFF, false);
         for (int i = 0; i < Math.min(5, inc.size()); i++) {
@@ -61,7 +57,7 @@ public class GuardGui extends DeviceGui {
             g.fill(lx + 2, ry, lx + lw - 2, ry + 24, blink ? 0xFF3A1520 : 0xFF2A1A20);
             fitText(g, (c.getBoolean("video") ? "▶ " : "") + c.getString("label"), lx + 5, ry + 3, lw - 52, 0xFFFFFF);
             int id = c.getInt("id");
-            button(g, lx + lw - 44, ry + 3, 40, 18, "응답", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> {
+            buttonIcon(g, lx + lw - 44, ry + 3, 40, 18, I_CALL, "응답", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> {
                 CompoundTag a = new CompoundTag();
                 a.putInt("callId", id);
                 act("answer", a);
@@ -71,9 +67,6 @@ public class GuardGui extends DeviceGui {
 
         // 하단 데크: 수화기 · 키패드 · 입력창 · 기능키
         int dy = y + 178;
-        g.fill(x + 8, dy, x + 40, y + h - 8, 0xFF22252A);
-        g.fill(x + 12, dy + 4, x + 36, dy + 16, 0xFF15171A);
-        g.fill(x + 12, y + h - 24, x + 36, y + h - 12, 0xFF15171A);
         keypad(g, x + 48, dy, 30, 18, 3, 0xFFC8CCD2, 0xFF22252A, mx, my);
         int ix = x + 156;
         g.fill(ix, dy, ix + 120, dy + 20, 0xFF050607);
@@ -82,23 +75,23 @@ public class GuardGui extends DeviceGui {
         button(g, ix + 124, dy, 30, 20, "←", 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> onKey('<'));
 
         int fy = dy + 26, fw = 58, fg = 6;
-        button(g, ix, fy, fw, 24, "세대", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> {
+        buttonIcon(g, ix, fy, fw, 24, I_BUILDING, "세대", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> {
             callPair("call_unit", input, -1);
             input = "";
         });
-        button(g, ix + (fw + fg), fy, fw, 24, "로비", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> {
+        buttonIcon(g, ix + (fw + fg), fy, fw, 24, I_CCTV, "로비", 0xFF2E6DB4, 0xFFFFFFFF, mx, my, () -> {
             callPair("call_lobby", input, -1);
             input = "";
         });
-        button(g, ix + 2 * (fw + fg), fy, fw, 24, "통화", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> act("answer"));
-        button(g, ix + 3 * (fw + fg), fy, fw, 24, "종료", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> act("hangup"));
-        button(g, ix, fy + 30, fw, 24, "문열림", data.getBoolean("entrance") || status() == DeviceLogic.STATUS_CONNECTED ? 0xFF2E6DB4 : 0xFF6C7076,
+        buttonIcon(g, ix + 2 * (fw + fg), fy, fw, 24, I_CALL, "통화", 0xFF2E9E4F, 0xFFFFFFFF, mx, my, () -> act("answer"));
+        buttonIcon(g, ix + 3 * (fw + fg), fy, fw, 24, I_HANGUP, "종료", 0xFFB43A3A, 0xFFFFFFFF, mx, my, () -> act("hangup"));
+        buttonIcon(g, ix, fy + 30, fw, 24, I_DOOR, "문열림", data.getBoolean("entrance") || status() == DeviceLogic.STATUS_CONNECTED ? 0xFF2E6DB4 : 0xFF6C7076,
                 0xFFFFFFFF, mx, my, () -> act("open_door"));
         ListTag cams = data.getList("cctv", Tag.TAG_COMPOUND);
         button(g, ix + (fw + fg), fy + 30, fw, 24, cctv >= 0 ? "CCTV " + (cctv + 1) : "CCTV", cctv >= 0 ? 0xFF7A5AD0 : 0xFF6C7076, 0xFFFFFFFF, mx, my, () -> {
             cctv = cams.isEmpty() ? -1 : (cctv + 1 >= cams.size() ? -1 : cctv + 1);
         });
-        button(g, ix + 2 * (fw + fg), fy + 30, fw * 2 + fg, 24, "경비실번호 설정", 0xFF6C7076, 0xFFFFFFFF, mx, my, this::openSettings);
+        buttonIcon(g, ix + 2 * (fw + fg), fy + 30, fw * 2 + fg, 24, I_GEAR, "경비실번호 설정", 0xFF6C7076, 0xFFFFFFFF, mx, my, this::openSettings);
     }
 
     private void drawMonitor(GuiGraphics g, int x, int y, int w, int h) {
