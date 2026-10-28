@@ -180,6 +180,22 @@ public final class SecurityLogic {
         }
     }
 
+    /** 세대 내부기기 [화재] 버튼: 경비실에 화재 비상 통보 */
+    public static void reportFire(ServerLevel level, NetworkData data, int cid, int dong, int ho, String from) {
+        String text = dong + "동 " + ho + "호 화재 비상 신고 (" + from + ")";
+        data.addAlert(cid, text, DeviceLogic.timeString(level));
+        Component msg = Component.literal("[화재 경보] " + text).withStyle(ChatFormatting.RED);
+        for (NetworkData.Device d : data.devicesIn(cid)) {
+            if (d.type == DeviceType.GUARD_STATION && level.isLoaded(d.pos)) {
+                level.playSound(null, d.pos, SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.BLOCKS, 2.0f, 0.6f);
+                for (ServerPlayer p : level.players()) {
+                    if (p.distanceToSqr(Vec3.atCenterOf(d.pos)) < 16 * 16) p.displayClientMessage(msg, true);
+                }
+            }
+            if (d.type.internal && d.dong == dong && d.ho == ho) CallManager.log(level, d.pos, "화재 비상 신고");
+        }
+    }
+
     /** 경비실기: 확인하지 않은 경보가 있으면 경보음 */
     public static void guardTick(ServerLevel level, DeviceBlockEntity guard) {
         NetworkData data = NetworkData.get(level);

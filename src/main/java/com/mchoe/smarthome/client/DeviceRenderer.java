@@ -53,7 +53,7 @@ public class DeviceRenderer implements BlockEntityRenderer<DeviceBlockEntity> {
         p.begin(facing, s[0], s[1], s[2], s[3], s[4]);
         float ts = type.textScale;
         switch (type) {
-            case WALLPAD, VIDEOPHONE, VIDEOPHONE_BASIC, GUARD_STATION -> drawVideoScreen(p, be, type, w, h, ts, blink);
+            case WALLPAD, VIDEOPHONE, VIDEOPHONE_BASIC, VIDEOPHONE_HANDSET, GUARD_STATION -> drawVideoScreen(p, be, type, w, h, ts, blink);
             case LOBBY_PHONE -> drawLobby(p, be, w, h, ts, blink, doorOpen);
             case INTERPHONE, INTERPHONE_BASIC -> drawInterphone(p, be, w, h, ts, blink);
             case DOOR_CAMERA, DOOR_PHONE -> drawDoorLed(p, be, w, h, ts, blink, doorOpen);

@@ -115,9 +115,12 @@ public class ControlScreen extends Screen implements DataScreen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         renderBackground(g);
-        g.fill(left - 2, top - 2, left + W + 2, top + H + 2, 0xFF3A3F46);
-        g.fill(left, top, left + W, top + H, 0xFF1B1F24);
-        g.fill(left, top, left + W, top + 20, 0xFF2EA8A0);
+        DeviceGui.rrect(g, left - 2, top, W + 4, H + 4, 0x50000000, 8);
+        DeviceGui.rrect(g, left - 2, top - 2, W + 4, H + 4, 0xFF3A3F46, 8);
+        DeviceGui.rrect(g, left, top, W, H, 0xFF1B1F24, 7);
+        DeviceGui.rrect(g, left, top, W, 20, 0xFF2EA8A0, 7);
+        g.fill(left, top + 13, left + W, top + 20, 0xFF2EA8A0);
+        DeviceGui.rrect(g, left + 2, top + 1, W - 4, 8, 0x28FFFFFF, 5);
         g.drawString(font, kind.korean, left + 8, top + 6, 0xFFFFFF, false);
         String cx = data.getString("complex");
         g.drawString(font, cx.isEmpty() ? "단지 구획 밖" : cx, left + W - 8 - font.width(cx.isEmpty() ? "단지 구획 밖" : cx), top + 6,

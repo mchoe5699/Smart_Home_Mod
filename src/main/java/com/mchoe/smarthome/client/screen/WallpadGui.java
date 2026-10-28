@@ -86,7 +86,7 @@ public class WallpadGui extends DeviceGui {
         circle(g, x + w - 14, y + h - 8, 2, idle() ? 0xFF2E7DD7 : 0xFF4CD27A);
 
         int sx = x + 12, sy = y + 10, sw = w - 24, sh = h - 26;
-        g.blit(SCREEN_BG, sx, sy, 0, 0, sw, sh, sw, sh);
+        art(g, SCREEN_BG, sx, sy, sw, sh);
         pwBox.visible = page == Page.SETTINGS && idle();
 
         if (!idle()) {

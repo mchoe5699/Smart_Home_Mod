@@ -253,7 +253,7 @@ public class ComputerScreen extends Screen implements DataScreen {
     public void render(GuiGraphics g, int mx, int my, float pt) {
         renderBackground(g);
         // 모니터 베젤
-        g.blit(DeviceGui.tex("computer"), left - 6, top - 6, 0, 0, W + 12, H + 12, W + 12, H + 12);
+        DeviceGui.art(g, DeviceGui.tex("computer"), left - 6, top - 6, W + 12, H + 12);
         g.fillGradient(left, top, left + W, top + 18, 0xFF3A7CC0, 0xFF2B6CB0);
         g.fillGradient(left, top + 18, left + W, top + H, 0xFF101A26, 0xFF0A1018);
         String cx = data.getString("complex");

@@ -82,7 +82,7 @@ public class SettingsScreen extends Screen implements DataScreen {
                 spec.add(new String[]{"ho", "호 번호"});
             }
         }
-        if (type == DeviceType.INTERPHONE) spec.add(new String[]{"householdPw", "세대 비밀번호 (변경 시만)"});
+        if (type == DeviceType.INTERPHONE || type == DeviceType.VIDEOPHONE_HANDSET) spec.add(new String[]{"householdPw", "세대 비밀번호 (변경 시만)"});
         spec.add(new String[]{"adminPw", "관리 비밀번호 (변경 시만)"});
         h = 56 + spec.size() * 26 + 40 + 24;
         left = (width - W) / 2;
@@ -164,9 +164,12 @@ public class SettingsScreen extends Screen implements DataScreen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
-        g.fill(left - 2, top - 2, left + W + 2, top + h + 2, 0xFF3A3F46);
-        g.fill(left, top, left + W, top + h, 0xFF1B1F24);
-        g.fill(left, top, left + W, top + 20, 0xFF1E4D8C);
+        DeviceGui.rrect(g, left - 2, top, W + 4, h + 4, 0x50000000, 8);
+        DeviceGui.rrect(g, left - 2, top - 2, W + 4, h + 4, 0xFF3A3F46, 8);
+        DeviceGui.rrect(g, left, top, W, h, 0xFF1B1F24, 7);
+        DeviceGui.rrect(g, left, top, W, 20, 0xFF1E4D8C, 7);
+        g.fill(left, top + 13, left + W, top + 20, 0xFF1E4D8C);
+        DeviceGui.rrect(g, left + 2, top + 1, W - 4, 8, 0x28FFFFFF, 5);
         g.drawString(font, title(), left + 8, top + 6, 0xFFFFFF, false);
         for (int i = 0; i < rows.size(); i++) {
             g.drawString(font, rows.get(i).label, left + 12, top + 39 + i * 26, 0xC8D0DA, false);

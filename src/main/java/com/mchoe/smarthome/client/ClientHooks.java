@@ -6,6 +6,7 @@ import com.mchoe.smarthome.client.screen.DashboardMapScreen;
 import com.mchoe.smarthome.client.screen.DataScreen;
 import com.mchoe.smarthome.client.screen.DoorGui;
 import com.mchoe.smarthome.client.screen.GuardGui;
+import com.mchoe.smarthome.client.screen.HandsetVideophoneGui;
 import com.mchoe.smarthome.client.screen.InterphoneGui;
 import com.mchoe.smarthome.client.screen.LobbyGui;
 import com.mchoe.smarthome.client.screen.VideophoneGui;
@@ -44,6 +45,7 @@ public final class ClientHooks {
                 case WALLPAD -> new WallpadGui(pos, data);
                 case VIDEOPHONE, VIDEOPHONE_BASIC -> new VideophoneGui(pos, data);
                 case INTERPHONE, INTERPHONE_BASIC -> new InterphoneGui(pos, data);
+                case VIDEOPHONE_HANDSET -> new HandsetVideophoneGui(pos, data);
                 case LOBBY_PHONE -> new LobbyGui(pos, data);
                 case GUARD_STATION -> new GuardGui(pos, data);
                 case DOOR_CAMERA, DOOR_PHONE -> new DoorGui(pos, data);

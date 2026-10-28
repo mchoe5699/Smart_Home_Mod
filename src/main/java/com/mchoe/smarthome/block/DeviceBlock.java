@@ -59,13 +59,15 @@ public class DeviceBlock extends BaseEntityBlock {
 
     private static VoxelShape baseShape(DeviceType type) {
         return switch (type) {
-            case WALLPAD -> box(0.5, 3, 15.25, 15.5, 12.5, 16);
-            case VIDEOPHONE, VIDEOPHONE_BASIC -> box(2, 4, 14.75, 14, 11.5, 16);
-            case INTERPHONE, INTERPHONE_BASIC -> box(5, 2.5, 13.6, 11, 13.5, 16);
+            case WALLPAD -> box(0.5, 3, 15, 15.5, 12.5, 16);
+            case VIDEOPHONE, VIDEOPHONE_BASIC -> box(1.5, 3.5, 14.5, 14.5, 12.3, 16);
+            case INTERPHONE, INTERPHONE_BASIC -> box(4.5, 2, 13.5, 11.5, 14, 16);
+            case VIDEOPHONE_HANDSET -> box(3.5, 1.5, 13.5, 12.5, 14.5, 16);
             case DOOR_CAMERA -> box(6, 3.5, 14, 10, 12.5, 16);
             case DOOR_PHONE -> box(5.5, 5, 14.75, 10.5, 11, 16);
-            case LOBBY_PHONE -> box(2.5, 0.5, 13.5, 13.5, 16, 16);
-            case GUARD_STATION -> Shapes.or(box(1, 0, 1, 15, 1.5, 15), box(2, 1.5, 9, 14, 11.5, 11), box(1.5, 1.5, 1.5, 11, 3, 7.5), box(12, 1.5, 2, 14.5, 3.5, 8));
+            case LOBBY_PHONE -> box(2.5, 0.5, 14.1, 13.5, 15.5, 16);
+            case GUARD_STATION -> Shapes.or(box(0.75, 0, 0.75, 15.25, 1.25, 15.25), box(2, 1.25, 9, 14, 11.5, 11.6),
+                    box(1.5, 1.25, 1.5, 10.5, 1.8, 7.5), box(11.3, 1.25, 2, 14.7, 2.9, 8.3));
         };
     }
 

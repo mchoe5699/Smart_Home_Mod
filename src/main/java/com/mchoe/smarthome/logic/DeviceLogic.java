@@ -204,7 +204,7 @@ public final class DeviceLogic {
                 tag.putString("notice", cx.notice);
                 tag.putBoolean("hasPw", data.hasCustomHouseholdPassword(cid, d.getDong(), d.getHo()));
             }
-            if (type == DeviceType.WALLPAD) HomeLogic.writeHousehold(level, data, cid, d.getDong(), d.getHo(), tag);
+            if (type == DeviceType.WALLPAD || type == DeviceType.VIDEOPHONE_HANDSET) HomeLogic.writeHousehold(level, data, cid, d.getDong(), d.getHo(), tag);
             if (type.internal) SecurityLogic.write(level, data, cid, d.getDong(), d.getHo(), tag);
             if (type == DeviceType.GUARD_STATION) SecurityLogic.writeAlerts(data, cid, tag);
             if (type == DeviceType.LOBBY_PHONE) {
@@ -412,7 +412,7 @@ public final class DeviceLogic {
             case VIDEOPHONE_BASIC, INTERPHONE_BASIC -> {
                 return "이 기기는 세대 직접 호출 기능이 없습니다. 경비실을 호출해 교환을 요청하세요";
             }
-            case WALLPAD, VIDEOPHONE, INTERPHONE -> {
+            case WALLPAD, VIDEOPHONE, INTERPHONE, VIDEOPHONE_HANDSET -> {
                 if (dev.getGuard() < 0) return "먼저 관할경비실·세대번호를 설정하세요";
                 requireSameGuard = true;
             }
@@ -614,7 +614,7 @@ public final class DeviceLogic {
 
     /** 세대에서 비밀번호를 바꿀 수 있는 기기 (월패드, 비디오폰, 다이얼 인터폰) */
     private static boolean canSetHouseholdPw(DeviceType t) {
-        return t == DeviceType.WALLPAD || t == DeviceType.VIDEOPHONE || t == DeviceType.INTERPHONE;
+        return t == DeviceType.WALLPAD || t == DeviceType.VIDEOPHONE || t == DeviceType.INTERPHONE || t == DeviceType.VIDEOPHONE_HANDSET;
     }
 
     /**

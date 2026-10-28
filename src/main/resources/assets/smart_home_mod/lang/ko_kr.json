@@ -21,5 +21,6 @@
  "block.smart_home_mod.interphone_basic": "인터폰(단순형)",
  "block.smart_home_mod.videophone_basic": "비디오폰(기본형)",
  "block.smart_home_mod.motion_sensor_outdoor": "외부 동체감지기",
- "block.smart_home_mod.motion_sensor_indoor": "실내 동체감지기"
+ "block.smart_home_mod.motion_sensor_indoor": "실내 동체감지기",
+ "block.smart_home_mod.videophone_handset": "수화기형 비디오폰"
 }

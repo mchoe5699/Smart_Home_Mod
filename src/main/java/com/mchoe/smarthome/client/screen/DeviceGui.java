@@ -52,6 +52,8 @@ public abstract class DeviceGui extends Screen implements DataScreen {
     private String chatKeep = "";
 
     private final List<Hit> hits = new ArrayList<>();
+    /** 버튼 눌림 표시 남은 틱 */
+    protected int pressedTicks;
 
     // 관리 비밀번호 (설정 메뉴 잠금)
     private String adminAuth;
@@ -198,6 +200,7 @@ public abstract class DeviceGui extends Screen implements DataScreen {
     public void tick() {
         super.tick();
         ticks++;
+        if (pressedTicks > 0) pressedTicks--;
         chatBox.tick();
         if (ticks % 10 == 0) act("refresh");
     }
@@ -238,63 +241,120 @@ public abstract class DeviceGui extends Screen implements DataScreen {
         if (msgs.isEmpty()) g.drawString(font, "아래에 입력하면 상대에게 전달됩니다", x + 5, y + 20, 0x707880, false);
     }
 
-    /** 실물 버튼(둥근 모서리 · 위아래 그라데이션 · 눌림 그림자). 누르면 action 실행 */
-    protected void button(GuiGraphics g, int x, int y, int w, int h, String label, int color, int textColor, int mx, int my, Runnable action) {
-        buttonIcon(g, x, y, w, h, -1, label, color, textColor, mx, my, action);
+    // ------------------------------------------------------------------ 부드러운 그리기 (고해상도 텍스처 + 선형 필터)
+
+    public static final ResourceLocation ROUND = tex("round");
+    public static final ResourceLocation DISC = tex("disc");
+    /** GUI 본체 이미지 해상도 배율 */
+    public static final int ART_SCALE = 3;
+
+    /** 텍스처를 부드럽게(선형 필터) 그리도록 설정 */
+    public static void smooth(ResourceLocation loc) {
+        net.minecraft.client.Minecraft.getInstance().getTextureManager().getTexture(loc).setFilter(true, false);
     }
 
-    /** 아이콘이 있는 버튼 (icon < 0 이면 글자만) */
-    protected void buttonIcon(GuiGraphics g, int x, int y, int w, int h, int icon, String label, int color, int textColor, int mx, int my, Runnable action) {
-        boolean hover = action != null && mx >= x && mx < x + w && my >= y && my < y + h;
-        int base = hover ? brighten(color, 18) : color;
-        // 그림자
-        rrect(g, x, y + 1, w, h, 0x50000000);
-        // 테두리 + 그라데이션 몸통
-        rrect(g, x, y, w, h, darken(base, 45));
-        g.fillGradient(x + 1, y + 1, x + w - 1, y + h - 1, brighten(base, 26), darken(base, 10));
-        g.fill(x + 2, y + 1, x + w - 2, y + 2, brighten(base, 55) & 0x80FFFFFF | 0x60000000);
-        int tw = label.isEmpty() ? 0 : Math.min(font.width(label), w - 6);
-        int iconSize = icon >= 0 ? Math.min(16, h - 4) : 0;
-        int gap = icon >= 0 && tw > 0 ? 3 : 0;
-        int total = iconSize + gap + tw;
-        int cx = x + (w - total) / 2;
-        if (icon >= 0) {
-            icon(g, icon, cx, y + (h - iconSize) / 2, iconSize, textColor);
-            cx += iconSize + gap;
-        }
-        if (tw > 0) {
-            String cut = font.width(label) > w - 6 ? font.plainSubstrByWidth(label, w - 6) : label;
-            g.drawString(font, cut, cx, y + (h - 8) / 2 + 1, textColor, false);
-        }
-        if (action != null) hits.add(new Hit(x, y, w, h, action));
-    }
-
-    /** 모서리를 1픽셀 깎은 사각형 */
-    protected static void rrect(GuiGraphics g, int x, int y, int w, int h, int color) {
-        g.fill(x + 1, y, x + w - 1, y + h, color);
-        g.fill(x, y + 1, x + 1, y + h - 1, color);
-        g.fill(x + w - 1, y + 1, x + w, y + h - 1, color);
-    }
-
-    /** 반투명 카드(타일) */
-    protected static void card(GuiGraphics g, int x, int y, int w, int h, int color) {
-        rrect(g, x, y, w, h, color);
-        g.fill(x + 1, y, x + w - 1, y + 1, 0x30FFFFFF);
-    }
-
-    /** 아이콘 (24px 시트에서 size 크기로, color 로 물들임) */
-    protected static void icon(GuiGraphics g, int index, int x, int y, int size, int color) {
+    private static void tint(int argb) {
+        float a = ((argb >>> 24) & 255) / 255f;
+        if ((argb >>> 24) == 0) a = 1f;
         RenderSystem.enableBlend();
-        RenderSystem.setShaderColor(((color >> 16) & 255) / 255f, ((color >> 8) & 255) / 255f, (color & 255) / 255f, 1f);
-        g.blit(ICONS, x, y, size, size, (index % 8) * 24, (index / 8) * 24, 24, 24, 192, 72);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(((argb >> 16) & 255) / 255f, ((argb >> 8) & 255) / 255f, (argb & 255) / 255f, a);
+    }
+
+    private static void untint() {
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         RenderSystem.disableBlend();
     }
 
-    /** 기기 본체 이미지 */
+    /** 모서리가 둥근 사각형 (반지름 자동) */
+    public static void rrect(GuiGraphics g, int x, int y, int w, int h, int color) {
+        rrect(g, x, y, w, h, color, Math.min(4, Math.min(w, h) / 2));
+    }
+
+    /** 모서리가 둥근 사각형 (9-slice, 안티에일리어싱) */
+    public static void rrect(GuiGraphics g, int x, int y, int w, int h, int color, int r) {
+        if (w <= 0 || h <= 0) return;
+        r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        if (r == 0) {
+            g.fill(x, y, x + w, y + h, (color >>> 24) == 0 ? color | 0xFF000000 : color);
+            return;
+        }
+        smooth(ROUND);
+        tint(color);
+        int T = 64, c = 16, m = T - 2 * c;
+        g.blit(ROUND, x, y, r, r, 0, 0, c, c, T, T);
+        g.blit(ROUND, x + w - r, y, r, r, T - c, 0, c, c, T, T);
+        g.blit(ROUND, x, y + h - r, r, r, 0, T - c, c, c, T, T);
+        g.blit(ROUND, x + w - r, y + h - r, r, r, T - c, T - c, c, c, T, T);
+        if (w > 2 * r) {
+            g.blit(ROUND, x + r, y, w - 2 * r, r, c, 0, m, c, T, T);
+            g.blit(ROUND, x + r, y + h - r, w - 2 * r, r, c, T - c, m, c, T, T);
+        }
+        if (h > 2 * r) {
+            g.blit(ROUND, x, y + r, r, h - 2 * r, 0, c, c, m, T, T);
+            g.blit(ROUND, x + w - r, y + r, r, h - 2 * r, T - c, c, c, m, T, T);
+            if (w > 2 * r) g.blit(ROUND, x + r, y + r, w - 2 * r, h - 2 * r, c, c, m, m, T, T);
+        }
+        untint();
+    }
+
+    /** 둥근 카드(타일) — 위쪽에 은은한 하이라이트 */
+    public static void card(GuiGraphics g, int x, int y, int w, int h, int color) {
+        rrect(g, x, y, w, h, color, 5);
+        rrect(g, x + 1, y + 1, w - 2, Math.max(2, h / 3), 0x14FFFFFF, 4);
+    }
+
+    /** 실물 버튼. 누르면 action 실행 */
+    protected void button(GuiGraphics g, int x, int y, int w, int h, String label, int color, int textColor, int mx, int my, Runnable action) {
+        buttonIcon(g, x, y, w, h, -1, label, color, textColor, mx, my, action);
+    }
+
+    /** 아이콘이 있는 버튼 (icon < 0 이면 글자만): 둥근 모서리 · 그림자 · 광택 */
+    protected void buttonIcon(GuiGraphics g, int x, int y, int w, int h, int icon, String label, int color, int textColor, int mx, int my, Runnable action) {
+        boolean hover = action != null && mx >= x && mx < x + w && my >= y && my < y + h;
+        boolean down = hover && pressedTicks > 0;
+        int base = (hover ? brighten(color, 16) : color) | 0xFF000000;
+        int r = Math.max(2, Math.min(6, h / 3));
+        int oy = down ? 1 : 0;
+        rrect(g, x, y + 2, w, h, 0x38000000, r);
+        rrect(g, x, y + oy, w, h, darken(base, 55), r);
+        rrect(g, x + 1, y + 1 + oy, w - 2, h - 2, base, r - 1);
+        rrect(g, x + 2, y + 1 + oy, w - 4, Math.max(2, (h - 2) / 2), 0x30FFFFFF, Math.max(1, r - 2));
+        int tw = label.isEmpty() ? 0 : Math.min(font.width(label), w - 6);
+        int iconSize = icon >= 0 ? Math.max(6, Math.min(16, h - 6)) : 0;
+        int gap = icon >= 0 && tw > 0 ? 3 : 0;
+        int total = iconSize + gap + tw;
+        int cx = x + (w - total) / 2;
+        if (icon >= 0) {
+            icon(g, icon, cx, y + (h - iconSize) / 2 + oy, iconSize, textColor);
+            cx += iconSize + gap;
+        }
+        if (tw > 0) {
+            String cut = font.width(label) > w - 6 ? font.plainSubstrByWidth(label, w - 6) : label;
+            g.drawString(font, cut, cx, y + (h - 8) / 2 + oy, textColor, false);
+        }
+        if (action != null) hits.add(new Hit(x, y, w, h, action));
+    }
+
+    /** 아이콘 (고해상도 시트, color 로 물들임) */
+    public static void icon(GuiGraphics g, int index, int x, int y, int size, int color) {
+        smooth(ICONS);
+        tint(color | 0xFF000000);
+        g.blit(ICONS, x, y, size, size, (index % 8) * 96, (index / 8) * 96, 96, 96, 768, 288);
+        untint();
+    }
+
+    /** 기기 본체 이미지 (3배 해상도를 부드럽게 축소) */
     protected void body(GuiGraphics g, ResourceLocation texture) {
+        art(g, texture, left, top, panelW, panelH);
+    }
+
+    /** 3배 해상도 그림을 (w x h) 크기로 */
+    public static void art(GuiGraphics g, ResourceLocation texture, int x, int y, int w, int h) {
+        smooth(texture);
         RenderSystem.enableBlend();
-        g.blit(texture, left, top, 0, 0, panelW, panelH, panelW, panelH);
+        int tw = w * ART_SCALE, th = h * ART_SCALE;
+        g.blit(texture, x, y, w, h, 0, 0, tw, th, tw, th);
         RenderSystem.disableBlend();
     }
 
@@ -324,11 +384,17 @@ public abstract class DeviceGui extends Screen implements DataScreen {
         return a | (r << 16) | (gg << 8) | b;
     }
 
+    /** 안티에일리어싱 원 */
     protected void circle(GuiGraphics g, int cx, int cy, int r, int color) {
-        for (int dy = -r; dy <= r; dy++) {
-            int dx = (int) Math.sqrt(r * r - dy * dy);
-            g.fill(cx - dx, cy + dy, cx + dx + 1, cy + dy + 1, color);
-        }
+        disc(g, cx, cy, r, color);
+    }
+
+    public static void disc(GuiGraphics g, int cx, int cy, int r, int color) {
+        if (r <= 0) return;
+        smooth(DISC);
+        tint(color);
+        g.blit(DISC, cx - r, cy - r, 2 * r, 2 * r, 0, 0, 128, 128, 128, 128);
+        untint();
     }
 
     protected void centered(GuiGraphics g, String s, int cx, int y, int color) {
@@ -397,6 +463,7 @@ public abstract class DeviceGui extends Screen implements DataScreen {
             Hit h = hits.get(i);
             if (mx >= h.x && mx < h.x + h.w && my >= h.y && my < h.y + h.h) {
                 minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
+                pressedTicks = 3;
                 h.action.run();
                 return true;
             }

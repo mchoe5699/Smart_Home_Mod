@@ -112,6 +112,10 @@ public final class HomeLogic {
                 }
                 return SecurityLogic.arm(player, level, data, cid, dong, ho, action.equals("away") ? 1 : args.getInt("mode"));
             }
+            case "fire" -> {
+                SecurityLogic.reportFire(level, data, cid, dong, ho, dev.getDeviceType().korean);
+                DeviceLogic.msg(player, "화재 비상 신고 — 경비실에 통보했습니다", ChatFormatting.RED);
+            }
             case "set_pw" -> {
                 String pw = args.getString("pw").trim();
                 if (!pw.isEmpty() && !pw.matches("\\d{4,8}")) return "세대 비밀번호는 숫자 4~8자리입니다";

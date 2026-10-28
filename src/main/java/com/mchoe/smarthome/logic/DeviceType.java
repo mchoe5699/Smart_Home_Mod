@@ -9,15 +9,16 @@ package com.mchoe.smarthome.logic;
  */
 public enum DeviceType {
     //            id               한글명         내부    카메라  영상표시 설정종류              벽부착  screen                                      글자    카메라높이(px)
-    WALLPAD      ("wallpad",       "월패드",      true,  false, true,  SettingsKind.UNIT,  true,  new float[]{1.5f, 4f, 14.5f, 11.7f, 15.25f},  0.085f, 0f),
-    VIDEOPHONE   ("videophone",    "비디오폰",    true,  false, true,  SettingsKind.UNIT,  true,  new float[]{5f, 5f, 13f, 10.5f, 14.75f},      0.075f, 0f),
-    INTERPHONE   ("interphone",    "인터폰",      true,  false, false, SettingsKind.UNIT,  true,  new float[]{5.6f, 10f, 8.6f, 12.4f, 15f},     0.045f, 0f),
-    VIDEOPHONE_BASIC("videophone_basic", "비디오폰(기본형)", true, false, true, SettingsKind.UNIT, true, new float[]{5f, 5f, 13f, 10.5f, 14.75f}, 0.075f, 0f),
-    INTERPHONE_BASIC("interphone_basic", "인터폰(단순형)", true, false, false, SettingsKind.UNIT, true, new float[]{5.6f, 10f, 8.6f, 12.4f, 15f}, 0.045f, 0f),
+    WALLPAD      ("wallpad",       "월패드",      true,  false, true,  SettingsKind.UNIT,  true,  new float[]{3.5f, 3.6f, 15.0f, 11.9f, 15f},  0.085f, 0f),
+    VIDEOPHONE   ("videophone",    "비디오폰",    true,  false, true,  SettingsKind.UNIT,  true,  new float[]{5.6f, 4.6f, 13.6f, 11.2f, 14.75f},      0.075f, 0f),
+    INTERPHONE   ("interphone",    "인터폰",      true,  false, false, SettingsKind.UNIT,  true,  new float[]{5.0f, 10.6f, 8.5f, 12.8f, 15.2f},     0.045f, 0f),
+    VIDEOPHONE_BASIC("videophone_basic", "비디오폰(기본형)", true, false, true, SettingsKind.UNIT, true, new float[]{5.6f, 4.6f, 13.6f, 11.2f, 14.75f}, 0.075f, 0f),
+    INTERPHONE_BASIC("interphone_basic", "인터폰(단순형)", true, false, false, SettingsKind.UNIT, true, new float[]{5.0f, 10.6f, 8.5f, 12.8f, 15.2f}, 0.045f, 0f),
+    VIDEOPHONE_HANDSET("videophone_handset", "수화기형 비디오폰", true, false, true, SettingsKind.UNIT, true, new float[]{4.2f, 10.3f, 9.05f, 13.45f, 15.2f}, 0.05f, 0f),
     DOOR_CAMERA  ("door_camera",   "도어카메라",  false, true,  false, SettingsKind.DOOR,  true,  new float[]{6.6f, 4.2f, 9.4f, 5.4f, 14.75f},  0.03f,  10.5f),
     DOOR_PHONE   ("door_phone",    "도어폰",      false, false, false, SettingsKind.DOOR,  true,  new float[]{6.2f, 5.6f, 9.8f, 6.8f, 14.75f},  0.03f,  0f),
-    LOBBY_PHONE  ("lobby_phone",   "로비폰",      false, true,  false, SettingsKind.LOBBY, true,  new float[]{3.5f, 8.6f, 12.5f, 13.2f, 15f},   0.075f, 14.2f),
-    GUARD_STATION("guard_station", "경비실기",    false, false, true,  SettingsKind.GUARD, false, new float[]{3f, 2.5f, 13f, 10.5f, 9f},        0.09f,  0f);
+    LOBBY_PHONE  ("lobby_phone",   "로비폰",      false, true,  false, SettingsKind.LOBBY, true,  new float[]{3.6f, 8.5f, 12.4f, 12.8f, 15f},   0.075f, 13.9f),
+    GUARD_STATION("guard_station", "경비실기",    false, false, true,  SettingsKind.GUARD, false, new float[]{2.6f, 2.6f, 13.4f, 10.9f, 9f},        0.09f,  0f);
 
     public enum SettingsKind {
         /** 관할경비실 + 동 + 호 */ UNIT,
@@ -59,12 +60,12 @@ public enum DeviceType {
 
     /** 외출/방범모드 설정·해제 기능 (월패드, 일반 비디오폰, 다이얼 인터폰). 기본형 비디오폰·단순형 인터폰은 없음 */
     public boolean hasSecurity() {
-        return this == WALLPAD || this == VIDEOPHONE || this == INTERPHONE;
+        return this == WALLPAD || this == VIDEOPHONE || this == INTERPHONE || this == VIDEOPHONE_HANDSET;
     }
 
     /** 비디오폰 계열 */
     public boolean isVideophone() {
-        return this == VIDEOPHONE || this == VIDEOPHONE_BASIC;
+        return this == VIDEOPHONE || this == VIDEOPHONE_BASIC || this == VIDEOPHONE_HANDSET;
     }
 
     /** 인터폰 계열 */
